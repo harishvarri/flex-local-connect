@@ -1,5 +1,6 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Search, MapPin, Calendar, DollarSign } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // Mock jobs data
 const jobs = [
@@ -74,6 +77,83 @@ const jobs = [
 ];
 
 const FindJobs = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [filteredJobs, setFilteredJobs] = useState(jobs);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+  // Check for location state (from Locations page)
+  useEffect(() => {
+    if (location.state?.locationFilter) {
+      setLocationFilter(location.state.locationFilter);
+    }
+  }, [location.state]);
+
+  // Check auth status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      setIsLoggedIn(!!data.session);
+    };
+    
+    checkAuth();
+  }, []);
+
+  // Filter jobs based on search term, location, and category
+  useEffect(() => {
+    let result = jobs;
+    
+    if (searchTerm) {
+      result = result.filter(job => 
+        job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.company.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    if (locationFilter) {
+      result = result.filter(job => 
+        job.location.toLowerCase().includes(locationFilter.toLowerCase())
+      );
+    }
+    
+    if (categoryFilter) {
+      result = result.filter(job => 
+        categoryFilter === "all" ? true : job.category === categoryFilter
+      );
+    }
+    
+    setFilteredJobs(result);
+  }, [searchTerm, locationFilter, categoryFilter]);
+
+  const handleApplyClick = (job: typeof jobs[0]) => {
+    if (isLoggedIn) {
+      navigate("/job-application", { state: { job } });
+    } else {
+      toast.error("Please login to apply for jobs");
+      navigate("/login", { state: { returnTo: "/job-application", job } });
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocationFilter(e.target.value);
+  };
+
+  const handleCategoryChange = (value: string) => {
+    setCategoryFilter(value);
+  };
+
+  const handleBrowseLocations = () => {
+    navigate("/locations");
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -94,6 +174,8 @@ const FindJobs = () => {
                 <Input
                   className="pl-10"
                   placeholder="Search job title or skills"
+                  value={searchTerm}
+                  onChange={handleSearchChange}
                 />
               </div>
 
@@ -102,21 +184,23 @@ const FindJobs = () => {
                 <Input
                   className="pl-10"
                   placeholder="Location"
+                  value={locationFilter}
+                  onChange={handleLocationChange}
                 />
               </div>
 
               <div>
-                <Select>
+                <Select value={categoryFilter} onValueChange={handleCategoryChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="cleaning">Cleaning</SelectItem>
-                    <SelectItem value="delivery">Delivery</SelectItem>
-                    <SelectItem value="admin">Administration</SelectItem>
-                    <SelectItem value="events">Events</SelectItem>
-                    <SelectItem value="trades">Skilled Trades</SelectItem>
+                    <SelectItem value="Cleaning">Cleaning</SelectItem>
+                    <SelectItem value="Delivery">Delivery</SelectItem>
+                    <SelectItem value="Administration">Administration</SelectItem>
+                    <SelectItem value="Events">Events</SelectItem>
+                    <SelectItem value="Skilled Trade">Skilled Trades</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -128,18 +212,23 @@ const FindJobs = () => {
                 <Badge variant="outline">This Week</Badge>
                 <Badge variant="outline">Within 5km</Badge>
               </div>
-              <Button>Search Jobs</Button>
+              <div className="flex gap-2">
+                <Button onClick={handleBrowseLocations} variant="outline">
+                  Browse Locations
+                </Button>
+                <Button>Search Jobs</Button>
+              </div>
             </div>
           </div>
 
           {/* Search results */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Found {jobs.length} Jobs
+              Found {filteredJobs.length} Jobs {locationFilter && `in ${locationFilter}`}
             </h2>
 
             <div className="space-y-4">
-              {jobs.map((job) => (
+              {filteredJobs.map((job) => (
                 <Card key={job.id} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
@@ -172,10 +261,27 @@ const FindJobs = () => {
 
                   <CardFooter className="flex justify-between items-center border-t pt-4">
                     <p className="text-xs text-gray-500">Posted {job.posted}</p>
-                    <Button>Apply Now</Button>
+                    <Button onClick={() => handleApplyClick(job)}>Apply Now</Button>
                   </CardFooter>
                 </Card>
               ))}
+
+              {filteredJobs.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No jobs found matching your criteria</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setLocationFilter("");
+                      setCategoryFilter("");
+                    }}
+                  >
+                    Clear all filters
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
