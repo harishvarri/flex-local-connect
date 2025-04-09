@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -11,8 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Search, MapPin, Calendar, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import AIJobRecommendations from "@/components/AIJobRecommendations";
 
-// Mock jobs data
 const jobs = [
   {
     id: "1",
@@ -85,14 +84,12 @@ const FindJobs = () => {
   const [filteredJobs, setFilteredJobs] = useState(jobs);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
-  // Check for location state (from Locations page)
   useEffect(() => {
     if (location.state?.locationFilter) {
       setLocationFilter(location.state.locationFilter);
     }
   }, [location.state]);
 
-  // Check auth status
   useEffect(() => {
     const checkAuth = async () => {
       const { data } = await supabase.auth.getSession();
@@ -102,7 +99,6 @@ const FindJobs = () => {
     checkAuth();
   }, []);
 
-  // Filter jobs based on search term, location, and category
   useEffect(() => {
     let result = jobs;
     
@@ -166,7 +162,6 @@ const FindJobs = () => {
             </p>
           </div>
 
-          {/* Search and filter */}
           <div className="bg-white rounded-lg shadow-sm p-4 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="relative">
@@ -221,7 +216,16 @@ const FindJobs = () => {
             </div>
           </div>
 
-          {/* Search results */}
+          <AIJobRecommendations 
+            searchTerm={searchTerm}
+            location={locationFilter}
+            category={categoryFilter}
+            onSelectJob={(job) => {
+              toast.info(`AI recommendation: ${job.title}`);
+              // In a real app, you could add this job to the list or navigate to its details
+            }}
+          />
+
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Found {filteredJobs.length} Jobs {locationFilter && `in ${locationFilter}`}
