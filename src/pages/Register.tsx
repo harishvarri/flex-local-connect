@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,12 +16,76 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserRole } from "@/types";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Register = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const queryParams = new URLSearchParams(location.search);
   const initialRole = (queryParams.get("role") as UserRole) || "worker";
   const [activeTab, setActiveTab] = useState<UserRole>(initialRole);
+  
+  // Common form fields
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  
+  // Employer-specific fields
+  const [companyName, setCompanyName] = useState("");
+  
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    
+    if (!email || !password || !name || !phone) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    
+    if (activeTab === "employer" && !companyName) {
+      toast.error("Please enter your company name");
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // Register user with Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+            phone,
+            role: activeTab,
+            company_name: activeTab === "employer" ? companyName : null,
+          },
+        },
+      });
+      
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success("Registration successful! Please check your email to confirm your account.");
+        navigate("/login");
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -44,118 +108,174 @@ const Register = () => {
               <TabsTrigger value="employer">I'm an Employer</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="worker" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Worker Registration</CardTitle>
-                  <CardDescription>
-                    Create an account to find flexible job opportunities in your area.
-                  </CardDescription>
-                </CardHeader>
+            <form onSubmit={handleRegister}>
+              <TabsContent value="worker" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Worker Registration</CardTitle>
+                    <CardDescription>
+                      Create an account to find flexible job opportunities in your area.
+                    </CardDescription>
+                  </CardHeader>
 
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="worker-name">Full Name</Label>
-                    <Input id="worker-name" placeholder="Enter your full name" />
-                  </div>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="worker-name">Full Name</Label>
+                      <Input 
+                        id="worker-name" 
+                        placeholder="Enter your full name" 
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="worker-email">Email</Label>
-                    <Input id="worker-email" type="email" placeholder="Enter your email" />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="worker-email">Email</Label>
+                      <Input 
+                        id="worker-email" 
+                        type="email" 
+                        placeholder="Enter your email" 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="worker-phone">Phone Number</Label>
-                    <Input id="worker-phone" type="tel" placeholder="Enter your phone number" />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="worker-phone">Phone Number</Label>
+                      <Input 
+                        id="worker-phone" 
+                        type="tel" 
+                        placeholder="Enter your phone number" 
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        required
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="worker-password">Password</Label>
-                    <Input
-                      id="worker-password"
-                      type="password"
-                      placeholder="Create a password"
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="worker-password">Password</Label>
+                      <Input
+                        id="worker-password"
+                        type="password"
+                        placeholder="Create a password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="worker-confirm-password">Confirm Password</Label>
-                    <Input
-                      id="worker-confirm-password"
-                      type="password"
-                      placeholder="Confirm your password"
-                    />
-                  </div>
-                </CardContent>
+                    <div className="space-y-2">
+                      <Label htmlFor="worker-confirm-password">Confirm Password</Label>
+                      <Input
+                        id="worker-confirm-password"
+                        type="password"
+                        placeholder="Confirm your password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </CardContent>
 
-                <CardFooter>
-                  <Button className="w-full">Create Worker Account</Button>
-                </CardFooter>
-              </Card>
-            </TabsContent>
+                  <CardFooter>
+                    <Button className="w-full" type="submit" disabled={isLoading}>
+                      {isLoading ? "Creating Account..." : "Create Worker Account"}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="employer" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Employer Registration</CardTitle>
-                  <CardDescription>
-                    Create an account to find skilled workers for your business needs.
-                  </CardDescription>
-                </CardHeader>
+              <TabsContent value="employer" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Employer Registration</CardTitle>
+                    <CardDescription>
+                      Create an account to find skilled workers for your business needs.
+                    </CardDescription>
+                  </CardHeader>
 
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="employer-name">Full Name</Label>
-                    <Input id="employer-name" placeholder="Enter your full name" />
-                  </div>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="employer-name">Full Name</Label>
+                      <Input 
+                        id="employer-name" 
+                        placeholder="Enter your full name" 
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="company-name">Company Name</Label>
-                    <Input id="company-name" placeholder="Enter your company name" />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="company-name">Company Name</Label>
+                      <Input 
+                        id="company-name" 
+                        placeholder="Enter your company name" 
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        required
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="employer-email">Business Email</Label>
-                    <Input
-                      id="employer-email"
-                      type="email"
-                      placeholder="Enter your business email"
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="employer-email">Business Email</Label>
+                      <Input
+                        id="employer-email"
+                        type="email"
+                        placeholder="Enter your business email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="employer-phone">Phone Number</Label>
-                    <Input
-                      id="employer-phone"
-                      type="tel"
-                      placeholder="Enter your phone number"
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="employer-phone">Phone Number</Label>
+                      <Input
+                        id="employer-phone"
+                        type="tel"
+                        placeholder="Enter your phone number"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        required
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="employer-password">Password</Label>
-                    <Input
-                      id="employer-password"
-                      type="password"
-                      placeholder="Create a password"
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="employer-password">Password</Label>
+                      <Input
+                        id="employer-password"
+                        type="password"
+                        placeholder="Create a password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="employer-confirm-password">Confirm Password</Label>
-                    <Input
-                      id="employer-confirm-password"
-                      type="password"
-                      placeholder="Confirm your password"
-                    />
-                  </div>
-                </CardContent>
+                    <div className="space-y-2">
+                      <Label htmlFor="employer-confirm-password">Confirm Password</Label>
+                      <Input
+                        id="employer-confirm-password"
+                        type="password"
+                        placeholder="Confirm your password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </CardContent>
 
-                <CardFooter>
-                  <Button className="w-full">Create Employer Account</Button>
-                </CardFooter>
-              </Card>
-            </TabsContent>
+                  <CardFooter>
+                    <Button className="w-full" type="submit" disabled={isLoading}>
+                      {isLoading ? "Creating Account..." : "Create Employer Account"}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </TabsContent>
+            </form>
           </Tabs>
 
           <div className="text-center text-sm text-gray-600">
