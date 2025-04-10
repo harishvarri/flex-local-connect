@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useLocation, Link, useNavigate } from "react-router-dom";
+import { useLocation as useRouterLocation, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,13 +14,13 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserRole } from "@/types";
-import Navbar from "@/components/Navbar";
+import AuthenticatedNavbar from "@/components/AuthenticatedNavbar";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Register = () => {
-  const locationHook = useLocation();
+  const locationHook = useRouterLocation();
   const navigate = useNavigate();
   const { signUp, isLoading: authLoading, user } = useAuth();
   
@@ -103,7 +103,7 @@ const Register = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      <AuthenticatedNavbar />
       <div className="flex-grow flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">

@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 const categories = [
@@ -47,6 +47,8 @@ const categories = [
 ];
 
 const CategoryGrid = () => {
+  const navigate = useNavigate();
+  
   return (
     <section className="bg-white py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -74,9 +76,12 @@ const CategoryGrid = () => {
           ))}
         </div>
 
-        <div className="mt-12 text-center">
-          <Button variant="outline" size="lg" asChild>
-            <Link to="/all-categories">View All Categories</Link>
+        <div className="mt-12 flex flex-wrap justify-center gap-4">
+          <Button variant="outline" size="lg" onClick={() => navigate('/workers')}>
+            View Worker Profiles
+          </Button>
+          <Button size="lg" onClick={() => navigate('/jobs')}>
+            Browse Available Jobs
           </Button>
         </div>
       </div>
