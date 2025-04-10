@@ -38,53 +38,20 @@ const AIJobRecommendations = ({
     setError(null);
     
     try {
-      // For now, we'll simulate AI recommendations with mock data
-      // In a real implementation, this would call a Supabase Edge Function with OpenAI integration
-      
-      // Mock AI-recommended jobs - would be replaced by real API call
-      const mockRecommendations = [
-        {
-          id: "ai-1",
-          title: "Retail Assistant - Weekend Hours",
-          company: "Fashion Mart",
-          location: location || "Bandra West",
-          category: category || "Retail",
-          description: "Weekend retail position perfect for students or those looking for part-time work. Flexible hours and competitive pay."
-        },
-        {
-          id: "ai-2",
-          title: "Data Entry Work From Home",
-          company: "Virtual Solutions",
-          location: location || "Remote",
-          category: category || "Administration",
-          description: "Remote data entry position with flexible hours. Perfect for those looking to work from home on their own schedule."
-        },
-        {
-          id: "ai-3",
-          title: "Food Delivery Partner",
-          company: "SpeedMeals",
-          location: location || "Mumbai",
-          category: category || "Delivery",
-          description: "Deliver food orders using your own vehicle. Set your own hours and earn competitive pay per delivery."
+      // Call the Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('ai-job-recommendations', {
+        body: { 
+          searchTerm, 
+          location, 
+          category,
+          // You can add user skills here if they're available from profile
+          // skills: "customer service, organization, cleaning"
         }
-      ];
+      });
       
-      // Filter based on search terms if provided
-      const filtered = searchTerm 
-        ? mockRecommendations.filter(job => 
-            job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            job.description.toLowerCase().includes(searchTerm.toLowerCase()))
-        : mockRecommendations;
+      if (error) throw error;
       
-      setRecommendations(filtered);
-      
-      // Later, this would be replaced with a real API call:
-      // const { data, error } = await supabase.functions.invoke('ai-job-recommendations', {
-      //   body: { searchTerm, location, category }
-      // });
-      //
-      // if (error) throw error;
-      // setRecommendations(data);
+      setRecommendations(data || []);
       
     } catch (err) {
       console.error("Error fetching AI recommendations:", err);
