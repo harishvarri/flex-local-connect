@@ -20,11 +20,11 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Register = () => {
-  const location = useLocation();
+  const locationHook = useLocation();
   const navigate = useNavigate();
   const { signUp, isLoading: authLoading, user } = useAuth();
   
-  const queryParams = new URLSearchParams(location.search);
+  const queryParams = new URLSearchParams(locationHook.search);
   const initialRole = (queryParams.get("role") as UserRole) || "worker";
   const [activeTab, setActiveTab] = useState<UserRole>(initialRole);
   
@@ -34,7 +34,7 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [location, setLocation] = useState("");
+  const [userLocation, setUserLocation] = useState("");
   
   // Employer-specific fields
   const [companyName, setCompanyName] = useState("");
@@ -71,11 +71,11 @@ const Register = () => {
     
     try {
       // Prepare user data for registration
-      const userData = {
+      const userData: any = {
         name,
         phone,
         role: activeTab,
-        location: location || null,
+        location: userLocation || null,
       };
       
       // Add employer-specific data if applicable
@@ -173,8 +173,8 @@ const Register = () => {
                       <Input 
                         id="worker-location" 
                         placeholder="Enter your city" 
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
+                        value={userLocation}
+                        onChange={(e) => setUserLocation(e.target.value)}
                       />
                     </div>
 
@@ -282,8 +282,8 @@ const Register = () => {
                       <Input 
                         id="employer-location" 
                         placeholder="Enter your city" 
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
+                        value={userLocation}
+                        onChange={(e) => setUserLocation(e.target.value)}
                       />
                     </div>
 

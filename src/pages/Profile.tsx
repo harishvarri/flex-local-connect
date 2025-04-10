@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -44,17 +43,17 @@ const Profile = () => {
             phoneNumber: appUser.phone || "",
             location: appUser.location || "",
             bio: appUser.bio || "",
-            skills: appUser.role === 'worker' 
-              ? appUser.skills?.map(s => s.name).join(", ") || ""
+            skills: appUser.role === 'worker' && 'skills' in appUser 
+              ? (appUser as any).skills?.map((s: any) => s.name).join(", ") || ""
               : "",
-            expectedWage: appUser.role === 'worker' 
-              ? appUser.expectedWage?.toString() || ""
+            expectedWage: appUser.role === 'worker' && 'expectedWage' in appUser 
+              ? (appUser as any).expectedWage?.toString() || ""
               : "",
-            companyName: appUser.role === 'employer'
-              ? appUser.companyName || ""
+            companyName: appUser.role === 'employer' && 'companyName' in appUser
+              ? (appUser as any).companyName || ""
               : "",
-            industry: appUser.role === 'employer'
-              ? appUser.industry || ""
+            industry: appUser.role === 'employer' && 'industry' in appUser
+              ? (appUser as any).industry || ""
               : "",
           });
         }
@@ -87,14 +86,14 @@ const Profile = () => {
       
       // Update basic profile
       const { error: profileError } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update({
           name: formData.fullName,
           phone: formData.phoneNumber,
           location: formData.location,
           bio: formData.bio,
         })
-        .eq('id', user.id);
+        .eq("id", user.id);
         
       if (profileError) throw profileError;
       
@@ -102,11 +101,11 @@ const Profile = () => {
       if (appUser?.role === 'worker') {
         // Update worker profile
         const { error: workerError } = await supabase
-          .from('worker_profiles')
+          .from("worker_profiles")
           .update({
             expected_wage: formData.expectedWage ? parseFloat(formData.expectedWage) : null,
           })
-          .eq('id', user.id);
+          .eq("id", user.id);
           
         if (workerError) throw workerError;
         
@@ -115,12 +114,12 @@ const Profile = () => {
       } else if (appUser?.role === 'employer') {
         // Update employer profile
         const { error: employerError } = await supabase
-          .from('employer_profiles')
+          .from("employer_profiles")
           .update({
             company_name: formData.companyName,
             industry: formData.industry,
           })
-          .eq('id', user.id);
+          .eq("id", user.id);
           
         if (employerError) throw employerError;
       }

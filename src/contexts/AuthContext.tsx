@@ -36,16 +36,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       if (role === 'worker') {
         const { data, error } = await supabase
-          .from('worker_profiles')
+          .from("worker_profiles")
           .select(`
             *, 
-            profiles:id (
+            profiles:id(
               id, name, email, avatar, phone, location, bio, role, created_at
             ),
-            worker_skills (
+            worker_skills(
               skill_id,
               level,
-              skills (
+              skills(
                 id, name, category
               )
             )
@@ -81,10 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else if (role === 'employer') {
         const { data, error } = await supabase
-          .from('employer_profiles')
+          .from("employer_profiles")
           .select(`
             *, 
-            profiles:id (
+            profiles:id(
               id, name, email, avatar, phone, location, bio, role, created_at
             )
           `)
@@ -121,14 +121,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const getUserRole = async (userId: string): Promise<UserRole | null> => {
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from("profiles")
         .select('role')
         .eq('id', userId)
         .single();
         
       if (error) throw error;
       
-      return data?.role || null;
+      return data?.role as UserRole || null;
     } catch (error) {
       console.error('Error getting user role:', error);
       return null;
