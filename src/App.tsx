@@ -15,6 +15,7 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import JobApplication from "./pages/JobApplication";
 import Locations from "./pages/Locations";
+import DummyData from "./pages/DummyData";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/job-application" element={<JobApplication />} />
             <Route path="/locations" element={<Locations />} />
+            <Route path="/dummy-data" element={<DummyData />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
