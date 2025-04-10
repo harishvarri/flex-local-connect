@@ -1,5 +1,5 @@
 
-import { Worker } from "@/types";
+import { Worker, Skill } from "@/types";
 
 // Helper functions to generate random values
 const getRandomElement = <T>(array: T[]): T => {
@@ -174,7 +174,8 @@ const skills = [
   { name: "Host/Hostess", category: "Food Service" }
 ];
 
-const skillLevels = ["beginner", "intermediate", "expert"] as const;
+// Fix 1: Define skillLevels without 'as const' to make it a mutable array
+const skillLevels: ("beginner" | "intermediate" | "expert")[] = ["beginner", "intermediate", "expert"];
 
 const names = [
   "Aarav Patel", "Advait Sharma", "Ananya Singh", "Arjun Kumar", "Diya Verma", 
@@ -376,8 +377,8 @@ export const generateWorkerProfiles = (count: number = 100): Worker[] => {
     const workerSkillCount = getRandomInt(2, 4);
     const shuffledSkills = [...skills].sort(() => 0.5 - Math.random()).slice(0, workerSkillCount);
     
-    // Create unique IDs for the worker skills
-    const workerSkills = shuffledSkills.map((skill, index) => ({
+    // Fix 2: Explicitly type the worker skills and properly set the level property
+    const workerSkills: Skill[] = shuffledSkills.map((skill, index) => ({
       id: `${i}_skill_${index + 1}`,
       name: skill.name,
       category: skill.category,
