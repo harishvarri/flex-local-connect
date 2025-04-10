@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,12 +16,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserRole } from "@/types";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Register = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { signUp, isLoading: authLoading, user } = useAuth();
+  
   const queryParams = new URLSearchParams(location.search);
   const initialRole = (queryParams.get("role") as UserRole) || "worker";
   const [activeTab, setActiveTab] = useState<UserRole>(initialRole);
@@ -32,11 +34,20 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [location, setLocation] = useState("");
   
   // Employer-specific fields
   const [companyName, setCompanyName] = useState("");
+  const [industry, setIndustry] = useState("");
   
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,19 +70,22 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      // Register user with Supabase
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-            phone,
-            role: activeTab,
-            company_name: activeTab === "employer" ? companyName : null,
-          },
-        },
-      });
+      // Prepare user data for registration
+      const userData = {
+        name,
+        phone,
+        role: activeTab,
+        location: location || null,
+      };
+      
+      // Add employer-specific data if applicable
+      if (activeTab === "employer") {
+        userData.company_name = companyName;
+        userData.industry = industry || null;
+      }
+      
+      // Register with Supabase
+      const { error } = await signUp(email, password, userData);
       
       if (error) {
         toast.error(error.message);
@@ -155,6 +169,16 @@ const Register = () => {
                     </div>
 
                     <div className="space-y-2">
+                      <Label htmlFor="worker-location">Location</Label>
+                      <Input 
+                        id="worker-location" 
+                        placeholder="Enter your city" 
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="worker-password">Password</Label>
                       <Input
                         id="worker-password"
@@ -180,7 +204,7 @@ const Register = () => {
                   </CardContent>
 
                   <CardFooter>
-                    <Button className="w-full" type="submit" disabled={isLoading}>
+                    <Button className="w-full" type="submit" disabled={isLoading || authLoading}>
                       {isLoading ? "Creating Account..." : "Create Worker Account"}
                     </Button>
                   </CardFooter>
@@ -220,6 +244,16 @@ const Register = () => {
                     </div>
 
                     <div className="space-y-2">
+                      <Label htmlFor="industry">Industry</Label>
+                      <Input 
+                        id="industry" 
+                        placeholder="Enter your industry" 
+                        value={industry}
+                        onChange={(e) => setIndustry(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="employer-email">Business Email</Label>
                       <Input
                         id="employer-email"
@@ -240,6 +274,16 @@ const Register = () => {
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="employer-location">Location</Label>
+                      <Input 
+                        id="employer-location" 
+                        placeholder="Enter your city" 
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
                       />
                     </div>
 
@@ -269,7 +313,7 @@ const Register = () => {
                   </CardContent>
 
                   <CardFooter>
-                    <Button className="w-full" type="submit" disabled={isLoading}>
+                    <Button className="w-full" type="submit" disabled={isLoading || authLoading}>
                       {isLoading ? "Creating Account..." : "Create Employer Account"}
                     </Button>
                   </CardFooter>

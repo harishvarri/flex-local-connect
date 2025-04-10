@@ -10,10 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Profile = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, appUser, refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -21,31 +21,43 @@ const Profile = () => {
     phoneNumber: "",
     location: "",
     skills: "",
-    bio: ""
+    bio: "",
+    expectedWage: "",
+    companyName: "",
+    industry: "",
   });
+
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkUser = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
+        if (!user) {
           navigate("/login", { state: { returnTo: "/profile" } });
           return;
         }
         
-        setUser(session.user);
-        
-        // Here you would typically fetch the user's profile data from your database
-        // For this example, we're setting dummy data
-        setFormData({
-          fullName: "John Doe",
-          phoneNumber: "+91 9876543210",
-          location: "Mumbai, India",
-          skills: "Cleaning, Organization, Customer Service",
-          bio: "Experienced worker with attention to detail and great communication skills."
-        });
+        // Populate form with user data if available
+        if (appUser) {
+          setFormData({
+            fullName: appUser.name || "",
+            phoneNumber: appUser.phone || "",
+            location: appUser.location || "",
+            bio: appUser.bio || "",
+            skills: appUser.role === 'worker' 
+              ? appUser.skills?.map(s => s.name).join(", ") || ""
+              : "",
+            expectedWage: appUser.role === 'worker' 
+              ? appUser.expectedWage?.toString() || ""
+              : "",
+            companyName: appUser.role === 'employer'
+              ? appUser.companyName || ""
+              : "",
+            industry: appUser.role === 'employer'
+              ? appUser.industry || ""
+              : "",
+          });
+        }
       } catch (error) {
         console.error("Error fetching user:", error);
       } finally {
@@ -54,7 +66,7 @@ const Profile = () => {
     };
 
     checkUser();
-  }, [navigate]);
+  }, [user, appUser, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -69,8 +81,52 @@ const Profile = () => {
     setSaving(true);
     
     try {
-      // Simulate saving profile
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+      
+      // Update basic profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          name: formData.fullName,
+          phone: formData.phoneNumber,
+          location: formData.location,
+          bio: formData.bio,
+        })
+        .eq('id', user.id);
+        
+      if (profileError) throw profileError;
+      
+      // Update role-specific information
+      if (appUser?.role === 'worker') {
+        // Update worker profile
+        const { error: workerError } = await supabase
+          .from('worker_profiles')
+          .update({
+            expected_wage: formData.expectedWage ? parseFloat(formData.expectedWage) : null,
+          })
+          .eq('id', user.id);
+          
+        if (workerError) throw workerError;
+        
+        // Handle skills update in a real app
+        // This would require more complex logic to add/remove skills
+      } else if (appUser?.role === 'employer') {
+        // Update employer profile
+        const { error: employerError } = await supabase
+          .from('employer_profiles')
+          .update({
+            company_name: formData.companyName,
+            industry: formData.industry,
+          })
+          .eq('id', user.id);
+          
+        if (employerError) throw employerError;
+      }
+      
+      // Refresh user data
+      await refreshUser();
       
       toast.success("Profile updated successfully!");
     } catch (error) {
@@ -100,7 +156,7 @@ const Profile = () => {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
-            <p className="mt-2 text-gray-600">Update your personal information and skills</p>
+            <p className="mt-2 text-gray-600">Update your personal information and settings</p>
           </div>
 
           <Card className="mb-8">
@@ -140,15 +196,54 @@ const Profile = () => {
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="skills">Skills</Label>
-                  <Input 
-                    id="skills" 
-                    value={formData.skills}
-                    onChange={handleInputChange}
-                    placeholder="List your key skills, separated by commas"
-                  />
-                </div>
+                {appUser?.role === 'worker' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="skills">Skills</Label>
+                      <Input 
+                        id="skills" 
+                        value={formData.skills}
+                        onChange={handleInputChange}
+                        placeholder="List your key skills, separated by commas"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="expectedWage">Expected Hourly Rate</Label>
+                      <Input 
+                        id="expectedWage" 
+                        type="number"
+                        value={formData.expectedWage}
+                        onChange={handleInputChange}
+                        placeholder="Your expected hourly rate"
+                      />
+                    </div>
+                  </>
+                )}
+                
+                {appUser?.role === 'employer' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="companyName">Company Name</Label>
+                      <Input 
+                        id="companyName" 
+                        value={formData.companyName}
+                        onChange={handleInputChange}
+                        placeholder="Your company name"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="industry">Industry</Label>
+                      <Input 
+                        id="industry" 
+                        value={formData.industry}
+                        onChange={handleInputChange}
+                        placeholder="Your industry"
+                      />
+                    </div>
+                  </>
+                )}
                 
                 <div className="space-y-2">
                   <Label htmlFor="bio">Bio</Label>
@@ -156,7 +251,7 @@ const Profile = () => {
                     id="bio" 
                     value={formData.bio}
                     onChange={handleInputChange}
-                    placeholder="Tell employers about yourself"
+                    placeholder="Tell us about yourself"
                     rows={4}
                   />
                 </div>

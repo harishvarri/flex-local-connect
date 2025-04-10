@@ -1,6 +1,6 @@
 
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,15 +15,28 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
   const navigate = useNavigate();
+  const location = useLocation();
+  const { signIn, user } = useAuth();
+  
+  // Get return URL from location state or default to dashboard
+  const returnTo = location.state?.returnTo || "/dashboard";
+  
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate(returnTo);
+    }
+  }, [user, navigate, returnTo]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,16 +49,13 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { error } = await signIn(email, password);
       
       if (error) {
         toast.error(error.message);
       } else {
         toast.success("Login successful!");
-        navigate("/");
+        navigate(returnTo);
       }
     } catch (error) {
       console.error("Login error:", error);
