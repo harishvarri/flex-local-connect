@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -34,7 +33,6 @@ const StarRating = ({ rating, setRating }: { rating: number; setRating: (rating:
   );
 };
 
-// Mock completed jobs for the current user
 const generateCompletedJobs = () => {
   return dummyJobs
     .slice(0, 8)
@@ -46,7 +44,6 @@ const generateCompletedJobs = () => {
     }));
 };
 
-// Mock reviews received by the current user
 const generateReceivedReviews = () => {
   return Array.from({ length: 6 }, (_, i) => ({
     id: `review-${i + 1}`,
@@ -86,7 +83,6 @@ const Ratings = () => {
   const [activeTab, setActiveTab] = useState("pending");
 
   useEffect(() => {
-    // Load mock data
     const completed = generateCompletedJobs();
     setPendingJobs(completed.filter(job => !job.isRated));
     setCompletedRatings(completed.filter(job => job.isRated));
@@ -101,10 +97,8 @@ const Ratings = () => {
       return;
     }
     
-    // In a real app, this would submit to the database
     toast.success("Thank you for your rating!");
     
-    // Update local state for the demo
     setCompletedRatings(prev => [
       ...prev, 
       { 
@@ -240,8 +234,8 @@ const Ratings = () => {
                           <CardContent>
                             <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                               <div className="flex items-center text-gray-600">
-                                <Calendar className="h-4 w-4 mr-2" />
-                                Reviewed on {format(job.ratedDate || new Date(), 'MMM d, yyyy')}
+                                <Calendar className="h-4 w-4 inline mr-2" />
+                                {format(job.ratedDate || new Date(), 'MMM d, yyyy')}
                               </div>
                               <div className="flex items-center text-gray-600">
                                 <User className="h-4 w-4 mr-2" />
@@ -315,7 +309,7 @@ const Ratings = () => {
                       {calculateAverageRating(receivedReviews)}
                     </div>
                     <div className="flex mt-2 mb-1">
-                      {renderStars(parseFloat(calculateAverageRating(receivedReviews)))}
+                      {renderStars(Number(calculateAverageRating(receivedReviews)))}
                     </div>
                     <div className="text-sm text-gray-500">
                       Based on {receivedReviews.length} reviews
