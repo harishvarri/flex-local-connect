@@ -11,6 +11,7 @@ import { MapPin, Star, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Worker } from "@/types";
+import { dummyWorkers } from "@/utils/dummyData";
 
 // This function transforms kebab-case to Title Case
 const formatCategoryTitle = (category: string) => {
@@ -23,10 +24,10 @@ const formatCategoryTitle = (category: string) => {
 // Map URL parameters to database categories
 const categoryMappings: Record<string, string[]> = {
   'cleaning-maintenance': ['Cleaning', 'Maintenance'],
-  'handyman-repairs': ['Repairs', 'Handyman'],
+  'handyman-repairs': ['Repairs', 'Handyman', 'Skilled Trade'],
   'delivery-logistics': ['Delivery', 'Transportation'],
   'event-staff': ['Events', 'Food Service'],
-  'data-entry': ['Administrative', 'Data Entry'],
+  'data-entry': ['Administrative', 'Administration', 'Data Entry'],
   'construction': ['Construction', 'Labor'],
   'retail-sales': ['Retail', 'Sales'],
   'healthcare': ['Healthcare', 'Support']
@@ -51,6 +52,7 @@ const CategoryPage = () => {
       try {
         setIsLoading(true);
         
+        // Try to fetch from Supabase first
         const { data, error } = await supabase
           .from("worker_profiles")
           .select(`
@@ -63,10 +65,12 @@ const CategoryPage = () => {
             )
           `);
 
-        if (error) throw error;
-
-        if (data) {
-          // Filter workers based on their skills matching the category
+        if (error) {
+          console.error("Error fetching from Supabase:", error);
+          // If Supabase fails, use dummy data
+          useDummyData();
+        } else if (data && data.length > 0) {
+          // Process Supabase data
           const filteredWorkers = data.filter((worker: any) => {
             return worker.worker_skills.some((skill: any) => {
               return dbCategories.some(cat => 
@@ -98,13 +102,36 @@ const CategoryPage = () => {
           }));
           
           setWorkers(formattedWorkers);
+        } else {
+          // No data from Supabase, use dummy data
+          useDummyData();
         }
       } catch (error) {
         console.error("Error fetching workers by category:", error);
-        toast.error("Failed to load workers");
+        // Use dummy data as fallback
+        useDummyData();
       } finally {
         setIsLoading(false);
       }
+    };
+
+    const useDummyData = () => {
+      // Filter dummy workers based on category
+      const filteredWorkers = dummyWorkers.filter(worker => {
+        return worker.skills.some(skill => 
+          dbCategories.some(cat => 
+            skill.name.toLowerCase().includes(cat.toLowerCase()) || 
+            skill.category.toLowerCase().includes(cat.toLowerCase())
+          )
+        );
+      });
+      
+      // If no workers match exactly, show some random ones to avoid empty state
+      const workersToShow = filteredWorkers.length > 0 
+        ? filteredWorkers 
+        : dummyWorkers.slice(0, 12);
+      
+      setWorkers(workersToShow);
     };
 
     fetchWorkersByCategory();
@@ -211,7 +238,7 @@ const CategoryPage = () => {
                         <div className="flex flex-wrap gap-2">
                           {worker.skills
                             .filter(skill => 
-                              dbCategories.some(cat => 
+                              dbCategories.length === 0 || dbCategories.some(cat => 
                                 skill.name.toLowerCase().includes(cat.toLowerCase()) || 
                                 skill.category.toLowerCase().includes(cat.toLowerCase())
                               )
