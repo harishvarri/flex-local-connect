@@ -12,7 +12,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { CalendarIcon, Briefcase, MapPin, Calendar as CalendarIcon2, Clock, DollarSign, CheckCircle2, Search } from "lucide-react";
+import { CalendarIcon, Briefcase, MapPin, Calendar as CalendarIcon2, Clock, DollarSign, CheckCircle2, Search, Star } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { dummyWorkers } from "@/utils/dummyData";

@@ -141,11 +141,11 @@ const Ratings = () => {
     
     for (let i = 1; i <= 5; i++) {
       if (i <= fullStars) {
-        stars.push(<Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />);
+        stars.push(<Star key={`star-${i}`} className="w-4 h-4 fill-yellow-400 text-yellow-400" />);
       } else if (i === fullStars + 1 && hasHalfStar) {
-        stars.push(<StarHalf key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />);
+        stars.push(<StarHalf key={`star-half-${i}`} className="w-4 h-4 fill-yellow-400 text-yellow-400" />);
       } else {
-        stars.push(<Star key={i} className="w-4 h-4 text-gray-300" />);
+        stars.push(<Star key={`star-empty-${i}`} className="w-4 h-4 text-gray-300" />);
       }
     }
     
