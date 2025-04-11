@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthenticatedNavbar from "@/components/AuthenticatedNavbar";
@@ -45,6 +44,10 @@ const MatchingPage = () => {
             employer_profiles:employer_id(
               id,
               profiles:id(name, avatar)
+            ),
+            job_skills(
+              skill_id,
+              skills(id, name, category)
             )
           `)
           .eq("status", "open");
@@ -91,7 +94,11 @@ const MatchingPage = () => {
             status: job.status,
             employerId: job.employer_id,
             createdAt: job.created_at,
-            skillRequired: job.skill_required || [],
+            skillRequired: job.job_skills ? job.job_skills.map((js: any) => ({
+              id: js.skill_id,
+              name: js.skills?.name || '',
+              category: js.skills?.category || ''
+            })) : [],
             workerId: job.worker_id
           }));
           
@@ -140,7 +147,11 @@ const MatchingPage = () => {
                   status: job.status,
                   employerId: job.employer_id,
                   createdAt: job.created_at,
-                  skillRequired: job.skill_required || [],
+                  skillRequired: job.job_skills ? job.job_skills.map((js: any) => ({
+                    id: js.skill_id,
+                    name: js.skills?.name || '',
+                    category: js.skills?.category || ''
+                  })) : [],
                   workerId: job.worker_id
                 };
                 
