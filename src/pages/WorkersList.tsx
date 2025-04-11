@@ -34,8 +34,8 @@ const WorkersList = () => {
           .from("worker_profiles")
           .select(`
             *, 
-            profiles:id(id, name, email, avatar, phone, location, bio, role, created_at),
-            worker_skills(
+            profiles:profiles!worker_profiles_id_fkey(id, name, email, avatar, phone, location, bio, role, created_at),
+            worker_skills:worker_skills!worker_skills_worker_id_fkey(
               skill_id,
               level,
               skills(id, name, category)
@@ -157,7 +157,7 @@ const WorkersList = () => {
                     <SelectValue placeholder="Filter by skill" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Skills</SelectItem>
+                    <SelectItem value="all">All Skills</SelectItem>
                     <SelectItem value="cleaning">Cleaning</SelectItem>
                     <SelectItem value="delivery">Delivery</SelectItem>
                     <SelectItem value="data entry">Data Entry</SelectItem>
