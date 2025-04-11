@@ -49,6 +49,10 @@ const categories = [
 const CategoryGrid = () => {
   const navigate = useNavigate();
   
+  const handleCategoryClick = (url: string) => {
+    navigate(url);
+  };
+  
   return (
     <section className="bg-white py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -63,16 +67,16 @@ const CategoryGrid = () => {
 
         <div className="mt-12 grid gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {categories.map((category) => (
-            <Link
+            <div
               key={category.name}
-              to={category.url}
-              className="group bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-smartflex-blue/30 transition-all"
+              onClick={() => handleCategoryClick(category.url)}
+              className="group bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-smartflex-blue/30 transition-all cursor-pointer"
             >
               <div className="text-4xl mb-4">{category.icon}</div>
               <h3 className="text-lg font-medium text-gray-900 group-hover:text-smartflex-blue transition-colors">
                 {category.name}
               </h3>
-            </Link>
+            </div>
           ))}
         </div>
 
