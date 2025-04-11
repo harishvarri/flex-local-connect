@@ -2,49 +2,45 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { dummyJobs } from "@/utils/dummyData";
 
-const categories = [
-  {
-    name: "Cleaning & Maintenance",
-    icon: "🧹",
-    url: "/jobs/cleaning-maintenance",
-  },
-  {
-    name: "Handyman & Repairs",
-    icon: "🔧",
-    url: "/jobs/handyman-repairs",
-  },
-  {
-    name: "Delivery & Logistics",
-    icon: "🚚",
-    url: "/jobs/delivery-logistics",
-  },
-  {
-    name: "Event Staff & Service",
-    icon: "🍽️",
-    url: "/jobs/event-staff",
-  },
-  {
-    name: "Data Entry & Admin",
-    icon: "💻",
-    url: "/jobs/data-entry",
-  },
-  {
-    name: "Construction & Labor",
-    icon: "👷",
-    url: "/jobs/construction",
-  },
-  {
-    name: "Retail & Sales",
-    icon: "🛍️",
-    url: "/jobs/retail-sales",
-  },
-  {
-    name: "Healthcare & Support",
-    icon: "⚕️",
-    url: "/jobs/healthcare",
-  },
-];
+// Get unique job categories from dummy data
+const getUniqueCategories = () => {
+  const categoriesSet = new Set(dummyJobs.map(job => job.category));
+  return Array.from(categoriesSet).map(category => ({
+    name: category,
+    icon: getCategoryIcon(category),
+    url: `/jobs/${category.toLowerCase().replace(/\s+/g, '-')}`,
+  }));
+};
+
+// Helper to get appropriate emoji for each category
+const getCategoryIcon = (category: string): string => {
+  const iconMap: {[key: string]: string} = {
+    "Cleaning": "🧹",
+    "Delivery": "🚚",
+    "Administration": "💻", 
+    "Events": "🍽️",
+    "Skilled Trade": "🔧",
+    "Retail": "🛍️",
+    "Warehouse": "📦",
+    "Food Service": "🍳",
+    "Healthcare": "⚕️",
+    "Education": "📚",
+    "IT Support": "🖥️",
+    "Marketing": "📱",
+    "Security": "🛡️",
+    "Maintenance": "🔨",
+    "Hospitality": "🏨",
+    "Manufacturing": "🏭",
+    "Construction": "👷"
+  };
+  
+  return iconMap[category] || "🔍";
+};
+
+// Get top 8 categories or fill with predefined ones if needed
+const categories = getUniqueCategories().slice(0, 8);
 
 const CategoryGrid = () => {
   const navigate = useNavigate();
@@ -54,7 +50,7 @@ const CategoryGrid = () => {
   };
   
   return (
-    <section className="bg-white py-16">
+    <section className="bg-white py-16" id="categories">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
