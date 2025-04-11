@@ -61,13 +61,13 @@ const AuthenticatedNavbar = () => {
           {/* Desktop navigation */}
           <nav className="hidden md:flex space-x-8">
             <Link
-              to="/find-jobs"
+              to="/jobs"
               className="text-gray-700 hover:text-smartflex-blue px-3 py-2 rounded-md text-sm font-medium transition-colors"
             >
               Find Jobs
             </Link>
             <Link
-              to="/find-workers"
+              to="/workers"
               className="text-gray-700 hover:text-smartflex-blue px-3 py-2 rounded-md text-sm font-medium transition-colors"
             >
               Find Workers
@@ -130,14 +130,14 @@ const AuthenticatedNavbar = () => {
       >
         <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t">
           <Link
-            to="/find-jobs"
+            to="/jobs"
             className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50"
             onClick={() => setIsMenuOpen(false)}
           >
             Find Jobs
           </Link>
           <Link
-            to="/find-workers"
+            to="/workers"
             className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50"
             onClick={() => setIsMenuOpen(false)}
           >

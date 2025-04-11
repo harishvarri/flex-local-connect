@@ -21,6 +21,8 @@ import PostJob from "@/pages/PostJob";
 import AvailabilityCalendar from "@/pages/AvailabilityCalendar";
 import Messages from "@/pages/Messages";
 import Ratings from "@/pages/Ratings";
+import WorkersList from "@/pages/WorkersList";
+import HowItWorks from "@/pages/HowItWorks";
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import AuthGuard from "@/components/AuthGuard";
@@ -42,9 +44,12 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/jobs" element={<FindJobs />} />
-            <Route path="/workers" element={<FindWorkers />} />
+            <Route path="/find-jobs" element={<FindJobs />} />
+            <Route path="/workers" element={<WorkersList />} />
+            <Route path="/find-workers" element={<WorkersList />} />
             <Route path="/jobs/:category" element={<CategoryPage />} />
             <Route path="/locations" element={<Locations />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
             
             {/* New public routes */}
             <Route path="/calendar" element={<AvailabilityCalendar />} />

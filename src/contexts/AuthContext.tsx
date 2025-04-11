@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { User as AppUser, Worker, Employer, UserRole } from '@/types';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   session: Session | null;
@@ -67,12 +68,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             bio: data.profiles.bio,
             createdAt: data.profiles.created_at,
             expectedWage: data.expected_wage,
-            skills: data.worker_skills.map((ws: any) => ({
+            skills: data.worker_skills?.map((ws: any) => ({
               id: ws.skills.id,
               name: ws.skills.name,
               category: ws.skills.category,
               level: ws.level
-            })),
+            })) || [],
             availability: [], // We'd fetch this separately in a real app
             ratings: []  // We'd fetch this separately in a real app
           };
@@ -126,12 +127,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .single();
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error getting user role:', error);
+        // If the user doesn't exist in profiles yet, create a default one
+        if (error.message.includes("contains 0 rows")) {
+          await createDefaultProfile(userId);
+          return 'worker'; // Default role
+        }
+        return null;
+      }
       
       return data?.role as UserRole || null;
     } catch (error) {
       console.error('Error getting user role:', error);
       return null;
+    }
+  };
+
+  // Create a default profile if one doesn't exist
+  const createDefaultProfile = async (userId: string) => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+
+      const email = userData.user.email || '';
+      
+      // Create profile record
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          name: email.split('@')[0],
+          email: email,
+          role: 'worker'
+        });
+        
+      if (profileError) throw profileError;
+      
+      // Create worker profile
+      const { error: workerError } = await supabase
+        .from('worker_profiles')
+        .insert({
+          id: userId
+        });
+        
+      if (workerError) throw workerError;
+      
+      console.log('Created default profile for user:', userId);
+    } catch (error) {
+      console.error('Error creating default profile:', error);
     }
   };
 
@@ -152,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
+      async (event, newSession) => {
         console.log('Auth state changed:', event);
         setSession(newSession);
         setUser(newSession?.user ?? null);
@@ -204,6 +248,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       });
       
+      if (error) {
+        toast.error(error.message);
+      }
+      
       return { error };
     } catch (error) {
       console.error('Error signing in:', error);
@@ -221,6 +269,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: userData
         },
       });
+      
+      if (error) {
+        toast.error(error.message);
+      } else {
+        // Create profile record after successful signup
+        if (data?.user?.id) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              name: userData.name || email.split('@')[0],
+              email: email,
+              role: userData.role || 'worker'
+            });
+            
+          if (profileError) {
+            console.error('Error creating profile:', profileError);
+            toast.error('Failed to create user profile');
+          }
+          
+          // Create role-specific profile
+          if (userData.role === 'employer') {
+            const { error: employerError } = await supabase
+              .from('employer_profiles')
+              .insert({
+                id: data.user.id,
+                company_name: userData.companyName || 'Company'
+              });
+              
+            if (employerError) {
+              console.error('Error creating employer profile:', employerError);
+            }
+          } else {
+            // Default to worker profile
+            const { error: workerError } = await supabase
+              .from('worker_profiles')
+              .insert({
+                id: data.user.id
+              });
+              
+            if (workerError) {
+              console.error('Error creating worker profile:', workerError);
+            }
+          }
+        }
+      }
       
       return { data, error };
     } catch (error) {
