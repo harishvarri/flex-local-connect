@@ -1,92 +1,17 @@
 
 import React, { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Search, MapPin, Star, Calendar, Phone, Mail } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Worker } from "@/types";
-
-// Mock worker data
-const mockWorkers = [
-  {
-    id: "1",
-    name: "Alex Johnson",
-    email: "alex@example.com",
-    role: "worker" as const,
-    phone: "555-123-4567",
-    location: "Mumbai Central",
-    bio: "Experienced handyman with 5+ years working on residential properties. Specializing in plumbing, electrical, and carpentry work.",
-    createdAt: "2023-01-15",
-    skills: [
-      { id: "1", name: "Plumbing", category: "Handyman", level: "expert" as const },
-      { id: "2", name: "Electrical", category: "Handyman", level: "intermediate" as const },
-      { id: "3", name: "Carpentry", category: "Handyman", level: "expert" as const }
-    ],
-    availability: [
-      { id: "1", date: "2023-04-20", startTime: "09:00", endTime: "17:00" },
-      { id: "2", date: "2023-04-21", startTime: "09:00", endTime: "17:00" },
-      { id: "3", date: "2023-04-22", startTime: "09:00", endTime: "17:00" }
-    ],
-    expectedWage: 500,
-    ratings: [
-      { id: "1", score: 5, comment: "Great work, very professional", jobId: "j1", fromId: "u1", toId: "1", createdAt: "2023-02-10" },
-      { id: "2", score: 4, comment: "Good job, on time", jobId: "j2", fromId: "u2", toId: "1", createdAt: "2023-03-05" }
-    ]
-  },
-  {
-    id: "2",
-    name: "Priya Sharma",
-    email: "priya@example.com",
-    role: "worker" as const,
-    phone: "555-987-6543",
-    location: "Andheri East",
-    bio: "Professional cleaner with experience in residential and commercial spaces. Detailed oriented and efficient.",
-    createdAt: "2023-02-10",
-    skills: [
-      { id: "4", name: "House Cleaning", category: "Cleaning", level: "expert" as const },
-      { id: "5", name: "Office Cleaning", category: "Cleaning", level: "expert" as const },
-      { id: "6", name: "Sanitization", category: "Cleaning", level: "intermediate" as const }
-    ],
-    availability: [
-      { id: "4", date: "2023-04-20", startTime: "08:00", endTime: "16:00" },
-      { id: "5", date: "2023-04-21", startTime: "08:00", endTime: "16:00" }
-    ],
-    expectedWage: 400,
-    ratings: [
-      { id: "3", score: 5, comment: "Very thorough cleaning", jobId: "j3", fromId: "u3", toId: "2", createdAt: "2023-03-15" }
-    ]
-  },
-  {
-    id: "3",
-    name: "Raj Patel",
-    email: "raj@example.com",
-    role: "worker" as const,
-    phone: "555-456-7890",
-    location: "Powai",
-    bio: "Delivery driver with own vehicle. Reliable and punctual with excellent knowledge of Mumbai roads.",
-    createdAt: "2023-01-05",
-    skills: [
-      { id: "7", name: "Local Delivery", category: "Delivery", level: "expert" as const },
-      { id: "8", name: "Food Delivery", category: "Delivery", level: "expert" as const },
-      { id: "9", name: "Package Handling", category: "Delivery", level: "intermediate" as const }
-    ],
-    availability: [
-      { id: "6", date: "2023-04-20", startTime: "10:00", endTime: "20:00" },
-      { id: "7", date: "2023-04-21", startTime: "10:00", endTime: "20:00" },
-      { id: "8", date: "2023-04-22", startTime: "10:00", endTime: "20:00" }
-    ],
-    expectedWage: 450,
-    ratings: [
-      { id: "4", score: 5, comment: "Very fast delivery", jobId: "j4", fromId: "u4", toId: "3", createdAt: "2023-02-20" },
-      { id: "5", score: 5, comment: "Professional and courteous", jobId: "j5", fromId: "u5", toId: "3", createdAt: "2023-03-10" }
-    ]
-  }
-];
+import { dummyWorkers } from "@/utils/dummyData";
 
 const FindWorkers = () => {
   const [backendStatus, setBackendStatus] = useState<"loading" | "connected" | "error">("loading");
@@ -94,6 +19,7 @@ const FindWorkers = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSkill, setFilterSkill] = useState("");
   const [filterLocation, setFilterLocation] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkBackendConnection = async () => {
@@ -108,11 +34,9 @@ const FindWorkers = () => {
         } else {
           console.log("Backend connection successful:", data);
           setBackendStatus("connected");
-          toast.success("Successfully connected to Supabase backend!");
           
-          // In a real app, fetch workers from Supabase here
-          // For now, use mock data
-          setWorkers(mockWorkers);
+          // Fetch workers from database or use dummy data
+          fetchWorkers();
         }
       } catch (error) {
         console.error("Backend connection test failed:", error);
@@ -123,6 +47,65 @@ const FindWorkers = () => {
 
     checkBackendConnection();
   }, []);
+
+  const fetchWorkers = async () => {
+    try {
+      // Try to fetch from Supabase first
+      const { data: workerProfiles, error } = await supabase
+        .from("worker_profiles")
+        .select(`
+          *, 
+          profiles:profiles!worker_profiles_id_fkey(id, name, email, avatar, phone, location, bio, role, created_at),
+          worker_skills:worker_skills!worker_skills_worker_id_fkey(
+            id,
+            skill_id,
+            level,
+            skills:skills!worker_skills_skill_id_fkey(id, name, category)
+          )
+        `);
+
+      if (error) {
+        console.error("Error fetching workers:", error);
+        // Use dummy data as fallback
+        setWorkers(dummyWorkers);
+        toast.info("Using demo data with 50+ workers");
+        return;
+      }
+
+      if (workerProfiles && workerProfiles.length > 0) {
+        // Transform the data to match our Worker type
+        const formattedWorkers = workerProfiles.map(worker => ({
+          id: worker.profiles.id || worker.id,
+          name: worker.profiles.name || "Anonymous Worker",
+          email: worker.profiles.email || "",
+          role: "worker" as const,
+          avatar: worker.profiles.avatar || "",
+          phone: worker.profiles.phone || "",
+          location: worker.profiles.location || "Location not specified",
+          bio: worker.profiles.bio || "No bio available",
+          createdAt: worker.profiles.created_at,
+          skills: worker.worker_skills ? worker.worker_skills.map(skill => ({
+            id: skill.id,
+            name: skill.skills.name,
+            category: skill.skills.category,
+            level: skill.level
+          })) : [],
+          availability: [],
+          expectedWage: worker.expected_wage,
+          ratings: []
+        }));
+        setWorkers(formattedWorkers);
+      } else {
+        // Use dummy data as fallback if no workers in database
+        console.log("No workers found in database, using dummy data");
+        setWorkers(dummyWorkers);
+        toast.info("Using demo data with 50+ workers: " + dummyWorkers.length);
+      }
+    } catch (error) {
+      console.error("Error in fetchWorkers:", error);
+      setWorkers(dummyWorkers);
+    }
+  };
 
   // Filter workers based on search term and filters
   const filteredWorkers = workers.filter(worker => {
@@ -142,6 +125,12 @@ const FindWorkers = () => {
   const handleContactWorker = (worker: Worker) => {
     toast.success(`Contact request sent to ${worker.name}`);
     // In a real app, this would open a chat or send a notification
+  };
+
+  const handleViewProfile = (workerId: string) => {
+    toast.info("Viewing worker profile: " + workerId);
+    // In a real app, navigate to the worker profile
+    // navigate(`/worker-profile/${workerId}`);
   };
 
   const getAverageRating = (ratings: Worker['ratings']) => {
@@ -220,27 +209,37 @@ const FindWorkers = () => {
                       <div className="mb-4">
                         <h4 className="font-semibold text-sm mb-2">Skills</h4>
                         <div className="flex flex-wrap gap-2">
-                          {worker.skills.map((skill) => (
-                            <Badge key={skill.id} variant="secondary" className="capitalize">
-                              {skill.name}
-                              {skill.level && (
-                                <span className="ml-1 text-xs opacity-70">({skill.level})</span>
-                              )}
-                            </Badge>
-                          ))}
+                          {worker.skills.length > 0 ? (
+                            worker.skills.map((skill) => (
+                              <Badge key={skill.id} variant="secondary" className="capitalize">
+                                {skill.name}
+                                {skill.level && (
+                                  <span className="ml-1 text-xs opacity-70">({skill.level})</span>
+                                )}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-500">No skills listed</span>
+                          )}
                         </div>
                       </div>
                       
                       <div>
                         <h4 className="font-semibold text-sm mb-2">Expected Rate</h4>
-                        <p className="font-medium text-green-600">₹{worker.expectedWage}/day</p>
+                        <p className="font-medium text-green-600">
+                          {worker.expectedWage ? `₹${worker.expectedWage}/day` : "Rate not specified"}
+                        </p>
                       </div>
                       
                       <div className="mt-4">
                         <h4 className="font-semibold text-sm mb-2">Availability</h4>
                         <div className="flex items-center">
                           <Calendar className="h-4 w-4 text-gray-500 mr-2" />
-                          <span className="text-sm">{worker.availability.length} days available</span>
+                          <span className="text-sm">
+                            {worker.availability.length > 0 
+                              ? `${worker.availability.length} days available` 
+                              : "Availability not specified"}
+                          </span>
                         </div>
                       </div>
                     </CardContent>
@@ -259,7 +258,7 @@ const FindWorkers = () => {
                           variant="default" 
                           size="sm" 
                           className="w-full flex items-center justify-center"
-                          onClick={() => handleContactWorker(worker)}
+                          onClick={() => handleViewProfile(worker.id)}
                         >
                           <Phone className="h-4 w-4 mr-2" />
                           Contact

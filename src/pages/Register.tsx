@@ -4,6 +4,7 @@ import { useLocation as useRouterLocation, Link, useNavigate } from "react-route
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -13,11 +14,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { UserRole } from "@/types";
 import AuthenticatedNavbar from "@/components/AuthenticatedNavbar";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 
 const Register = () => {
   const locationHook = useRouterLocation();
@@ -35,10 +45,18 @@ const Register = () => {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [userLocation, setUserLocation] = useState("");
+  const [bio, setBio] = useState("");
   
   // Employer-specific fields
   const [companyName, setCompanyName] = useState("");
   const [industry, setIndustry] = useState("");
+  
+  // Worker-specific fields
+  const [skills, setSkills] = useState<{ name: string; level: string }[]>([]);
+  const [currentSkill, setCurrentSkill] = useState("");
+  const [currentSkillLevel, setCurrentSkillLevel] = useState("beginner");
+  const [expectedWage, setExpectedWage] = useState("");
+  const [experience, setExperience] = useState("");
   
   const [isLoading, setIsLoading] = useState(false);
 
@@ -48,6 +66,28 @@ const Register = () => {
       navigate("/dashboard");
     }
   }, [user, navigate]);
+
+  const handleAddSkill = () => {
+    if (!currentSkill.trim()) return;
+    
+    const newSkill = {
+      name: currentSkill.trim(),
+      level: currentSkillLevel
+    };
+    
+    // Check for duplicates
+    if (skills.some(skill => skill.name.toLowerCase() === newSkill.name.toLowerCase())) {
+      toast.error("This skill has already been added");
+      return;
+    }
+    
+    setSkills([...skills, newSkill]);
+    setCurrentSkill("");
+  };
+
+  const handleRemoveSkill = (skillToRemove: string) => {
+    setSkills(skills.filter(skill => skill.name !== skillToRemove));
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,12 +116,20 @@ const Register = () => {
         phone,
         role: activeTab,
         location: userLocation || null,
+        bio: bio || null,
       };
       
       // Add employer-specific data if applicable
       if (activeTab === "employer") {
         userData.company_name = companyName;
         userData.industry = industry || null;
+      }
+      
+      // Add worker-specific data if applicable
+      if (activeTab === "worker") {
+        userData.expected_wage = expectedWage ? Number(expectedWage) : null;
+        userData.experience = experience || null;
+        userData.skills = skills.length > 0 ? skills : null;
       }
       
       // Register with Supabase
@@ -176,6 +224,97 @@ const Register = () => {
                         value={userLocation}
                         onChange={(e) => setUserLocation(e.target.value)}
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="worker-bio">About Yourself</Label>
+                      <Textarea 
+                        id="worker-bio" 
+                        placeholder="Tell employers about yourself, your background, and what kind of work you're looking for"
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="worker-experience">Work Experience</Label>
+                      <Textarea 
+                        id="worker-experience" 
+                        placeholder="Briefly describe your previous work experience"
+                        value={experience}
+                        onChange={(e) => setExperience(e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="worker-wage">Expected Daily Rate (₹)</Label>
+                      <Input 
+                        id="worker-wage" 
+                        type="number" 
+                        placeholder="Enter your expected daily rate" 
+                        value={expectedWage}
+                        onChange={(e) => setExpectedWage(e.target.value)}
+                        min={0}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Skills</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          placeholder="Add a skill" 
+                          value={currentSkill}
+                          onChange={(e) => setCurrentSkill(e.target.value)}
+                          className="flex-grow"
+                        />
+                        <Select 
+                          value={currentSkillLevel} 
+                          onValueChange={setCurrentSkillLevel}
+                        >
+                          <SelectTrigger className="w-[110px]">
+                            <SelectValue placeholder="Level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="beginner">Beginner</SelectItem>
+                            <SelectItem value="intermediate">Intermediate</SelectItem>
+                            <SelectItem value="expert">Expert</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button 
+                          type="button" 
+                          onClick={handleAddSkill}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                      
+                      {skills.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {skills.map((skill, index) => (
+                            <Badge 
+                              key={index} 
+                              variant="secondary"
+                              className="flex items-center gap-1 pl-2 pr-1 py-1"
+                            >
+                              {skill.name}
+                              <span className="text-xs bg-gray-100 px-1 rounded mr-1">
+                                {skill.level}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 rounded-full"
+                                onClick={() => handleRemoveSkill(skill.name)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -284,6 +423,17 @@ const Register = () => {
                         placeholder="Enter your city" 
                         value={userLocation}
                         onChange={(e) => setUserLocation(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="employer-bio">Company Description</Label>
+                      <Textarea 
+                        id="employer-bio" 
+                        placeholder="Tell workers about your company and the types of jobs you typically offer"
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        rows={3}
                       />
                     </div>
 

@@ -68,7 +68,66 @@ const CategoryPage = () => {
       try {
         setIsLoading(true);
         
-        // Use dummy data for now - this is what will show up until the database is populated
+        // Try to fetch workers from the database first
+        const { data: workerProfiles, error } = await supabase
+          .from("worker_profiles")
+          .select(`
+            *, 
+            profiles:profiles!worker_profiles_id_fkey(id, name, email, avatar, phone, location, bio, role, created_at),
+            worker_skills:worker_skills!worker_skills_worker_id_fkey(
+              id,
+              skill_id,
+              level,
+              skills:skills!worker_skills_skill_id_fkey(id, name, category)
+            )
+          `);
+
+        if (error) {
+          console.error("Error fetching workers from database:", error);
+          throw error;
+        }
+
+        if (workerProfiles && workerProfiles.length > 0) {
+          // Transform the data to match our Worker type
+          const formattedWorkers = workerProfiles.map(worker => ({
+            id: worker.profiles.id || worker.id,
+            name: worker.profiles.name || "Anonymous Worker",
+            email: worker.profiles.email || "",
+            role: "worker" as const,
+            avatar: worker.profiles.avatar || "",
+            phone: worker.profiles.phone || "",
+            location: worker.profiles.location || "Location not specified",
+            bio: worker.profiles.bio || "No bio available",
+            createdAt: worker.profiles.created_at,
+            skills: worker.worker_skills ? worker.worker_skills.map(skill => ({
+              id: skill.id,
+              name: skill.skills.name,
+              category: skill.skills.category,
+              level: skill.level
+            })) : [],
+            availability: [],
+            expectedWage: worker.expected_wage,
+            ratings: []
+          }));
+          
+          // Filter workers based on category
+          const filteredWorkers = formattedWorkers.filter(worker => {
+            return worker.skills.some(skill => 
+              dbCategories.some(cat => 
+                skill.name.toLowerCase().includes(cat.toLowerCase()) || 
+                skill.category.toLowerCase().includes(cat.toLowerCase())
+              )
+            );
+          });
+          
+          if (filteredWorkers.length > 0) {
+            setWorkers(filteredWorkers);
+            setIsLoading(false);
+            return;
+          }
+        }
+        
+        // If no database results or no matches, fall back to dummy workers
         const filteredWorkers = dummyWorkers.filter(worker => {
           return worker.skills.some(skill => 
             dbCategories.some(cat => 
@@ -98,7 +157,6 @@ const CategoryPage = () => {
   }, [category, dbCategories]);
 
   const handleViewProfile = (workerId: string) => {
-    // For now just show a toast since worker profiles may not be fully implemented
     toast.info("Viewing worker profile: " + workerId);
     // In a real app, we would navigate to the worker's profile
     // navigate(`/worker-profile/${workerId}`);

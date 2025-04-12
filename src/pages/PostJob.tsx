@@ -1,578 +1,344 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { useNavigate } from "react-router-dom";
-import { CalendarIcon, Briefcase, MapPin, Calendar as CalendarIcon2, Clock, DollarSign, CheckCircle2, Search, Star } from "lucide-react";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import { dummyWorkers } from "@/utils/dummyData";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-
-// Skill categories based on our dummyData
-const skillCategories = [
-  "Cleaning",
-  "Delivery",
-  "Administration",
-  "Events",
-  "Skilled Trade",
-  "Retail",
-  "Warehouse",
-  "Food Service",
-  "Healthcare",
-  "Education",
-  "IT Support",
-  "Marketing",
-  "Security",
-  "Maintenance"
-];
-
-const locations = [
-  "Mumbai Central", 
-  "Andheri East", 
-  "Andheri West", 
-  "Bandra", 
-  "Borivali", 
-  "Chembur", 
-  "Colaba", 
-  "Dadar", 
-  "Goregaon", 
-  "Juhu", 
-  "Lower Parel", 
-  "Malad", 
-  "Powai", 
-  "Santacruz", 
-  "Vile Parle", 
-  "Worli", 
-  "BKC"
-];
+import { format } from "date-fns";
 
 const PostJob = () => {
+  const { toast } = useToast();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [jobDate, setJobDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [payment, setPayment] = useState("");
-  const [analyzing, setAnalyzing] = useState(false);
-  const [matchedWorkers, setMatchedWorkers] = useState<typeof dummyWorkers>([]);
-  const [jobCreated, setJobCreated] = useState(false);
-  const [isPosting, setIsPosting] = useState(false);
-
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setDescription(e.target.value);
-    
-    // Clear matched workers when description changes
-    if (matchedWorkers.length > 0) {
-      setMatchedWorkers([]);
-    }
-  };
-
-  const analyzeJobDescription = () => {
-    if (description.trim().length < 20) {
-      toast.error("Please provide a more detailed job description");
-      return;
-    }
-    
-    setAnalyzing(true);
-    
-    // Simulate AI analysis with a timeout
-    setTimeout(() => {
-      // Extract key terms from description to find workers
-      const descriptionLower = description.toLowerCase();
-      const keyTerms = [
-        ...skillCategories.filter(skill => 
-          descriptionLower.includes(skill.toLowerCase())
-        ),
-        // Add additional keywords based on the text
-        ...(descriptionLower.includes('clean') ? ['cleaning', 'sanitization'] : []),
-        ...(descriptionLower.includes('deliver') ? ['delivery', 'driver'] : []),
-        ...(descriptionLower.includes('data') ? ['data entry', 'administration'] : []),
-        ...(descriptionLower.includes('event') ? ['event staff', 'catering'] : []),
-        ...(descriptionLower.includes('repair') ? ['handyman', 'plumbing', 'electrical'] : []),
-      ];
-
-      // If no category is set yet, try to infer it
-      if (!category && keyTerms.length > 0) {
-        // Find the first matching category
-        const inferredCategory = skillCategories.find(cat => 
-          keyTerms.some(term => term.toLowerCase().includes(cat.toLowerCase()))
-        );
-        
-        if (inferredCategory) {
-          setCategory(inferredCategory);
-          toast.info(`Category set to "${inferredCategory}" based on job description`);
-        }
+  const [category, setCategory] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Check if user is logged in and is an employer
+  useEffect(() => {
+    const checkUserRole = async () => {
+      if (!isLoading && !user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in as an employer to post jobs",
+          variant: "destructive"
+        });
+        navigate("/login", { state: { returnTo: "/post-job" } });
+      } else if (user && user.role !== "employer") {
+        toast({
+          title: "Employer access only",
+          description: "Only employers can post jobs",
+          variant: "destructive"
+        });
+        navigate("/");
       }
-      
-      // Use the key terms to find matching workers
-      const matches = dummyWorkers.filter(worker => {
-        // Check if worker has relevant skills
-        const hasMatchingSkills = worker.skills.some(skill => 
-          keyTerms.some(term => 
-            skill.name.toLowerCase().includes(term.toLowerCase()) || 
-            skill.category.toLowerCase().includes(term.toLowerCase())
-          )
-        );
-        
-        // Also match on location if it's been specified
-        const matchesLocation = !location || worker.location.includes(location);
-        
-        return hasMatchingSkills && matchesLocation;
-      });
-      
-      // Sort by rating and limit to top 5
-      const sortedMatches = matches
-        .sort((a, b) => {
-          const aAvgRating = a.ratings.length > 0 
-            ? a.ratings.reduce((sum, r) => sum + r.score, 0) / a.ratings.length 
-            : 0;
-          const bAvgRating = b.ratings.length > 0 
-            ? b.ratings.reduce((sum, r) => sum + r.score, 0) / b.ratings.length 
-            : 0;
-          return bAvgRating - aAvgRating;
-        })
-        .slice(0, 5);
-      
-      setMatchedWorkers(sortedMatches);
-      setAnalyzing(false);
-      
-      if (sortedMatches.length === 0) {
-        toast.info("No matching workers found. Try a different job description or location.");
-      } else {
-        toast.success(`Found ${sortedMatches.length} potential workers for this job`);
-      }
-    }, 1500);
-  };
+    };
+    
+    checkUserRole();
+  }, [user, isLoading, navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate form fields
-    if (!title || !description || !category || !location || !date || !startTime || !endTime || !payment) {
-      toast.error("Please fill in all required fields");
+    // Form validation
+    if (!title || !description || !location || !jobDate || !startTime || !endTime || !payment || !category) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
       return;
     }
     
-    setIsPosting(true);
+    if (isNaN(Number(payment)) || Number(payment) <= 0) {
+      toast({
+        title: "Invalid payment amount",
+        description: "Please enter a valid payment amount",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to post jobs",
+        variant: "destructive"
+      });
+      navigate("/login", { state: { returnTo: "/post-job" } });
+      return;
+    }
+    
+    setIsSubmitting(true);
     
     try {
-      // Check if user is authenticated
-      if (!user) {
-        toast.error("Please log in to post a job");
-        navigate('/login', { state: { returnTo: '/post-job' } });
-        return;
+      // Format date correctly for PostgreSQL
+      const formattedDate = format(new Date(jobDate), 'yyyy-MM-dd');
+      
+      // Insert job into database
+      const { data: jobData, error: jobError } = await supabase
+        .from("jobs")
+        .insert([
+          {
+            title,
+            description,
+            location,
+            date: formattedDate,
+            start_time: startTime,
+            end_time: endTime,
+            payment: Number(payment),
+            employer_id: user.id,
+            status: "open"
+          }
+        ])
+        .select("id");
+      
+      if (jobError) {
+        console.error("Error posting job:", jobError);
+        throw new Error(jobError.message || "Failed to post job");
       }
       
-      // Format date for database
-      const formattedDate = date ? format(date, 'yyyy-MM-dd') : '';
+      if (!jobData || jobData.length === 0) {
+        throw new Error("No job data returned");
+      }
       
-      // Add to Supabase
-      const { data, error } = await supabase
-        .from('jobs')
-        .insert({
-          title,
-          description,
-          location,
-          date: formattedDate,
-          start_time: startTime,
-          end_time: endTime,
-          payment: parseFloat(payment),
-          employer_id: user.id,
-          status: 'open',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select();
+      const jobId = jobData[0].id;
+      
+      // Now add the job skills
+      if (category) {
+        // First, check if the skill/category exists
+        const { data: skillData, error: skillQueryError } = await supabase
+          .from("skills")
+          .select("id")
+          .eq("category", category)
+          .maybeSingle();
         
-      if (error) {
-        console.error("Error posting job:", error);
-        toast.error("Failed to post job: " + error.message);
-        setIsPosting(false);
-        return;
+        if (skillQueryError) {
+          console.error("Error finding skill:", skillQueryError);
+        }
+        
+        let skillId;
+        
+        if (!skillData) {
+          // Create the skill if it doesn't exist
+          const { data: newSkill, error: skillInsertError } = await supabase
+            .from("skills")
+            .insert([{ name: category, category }])
+            .select("id")
+            .single();
+          
+          if (skillInsertError) {
+            console.error("Error creating skill:", skillInsertError);
+          } else {
+            skillId = newSkill.id;
+          }
+        } else {
+          skillId = skillData.id;
+        }
+        
+        // Link the skill to the job
+        if (skillId) {
+          const { error: jobSkillError } = await supabase
+            .from("job_skills")
+            .insert([{ job_id: jobId, skill_id: skillId }]);
+          
+          if (jobSkillError) {
+            console.error("Error linking skill to job:", jobSkillError);
+          }
+        }
       }
       
-      toast.success("Job posted successfully!");
-      setJobCreated(true);
+      toast({
+        title: "Job posted successfully",
+        description: "Workers can now apply to your job",
+      });
       
-      // Clear the form
+      // Clear form
       setTitle("");
       setDescription("");
-      setCategory("");
       setLocation("");
-      setDate(new Date());
+      setJobDate("");
       setStartTime("");
       setEndTime("");
       setPayment("");
-      setMatchedWorkers([]);
-    } catch (error) {
-      console.error("Error posting job:", error);
-      toast.error("An unexpected error occurred. Please try again.");
+      setCategory("");
+      
+      // Redirect to jobs page
+      navigate("/jobs");
+      
+    } catch (error: any) {
+      console.error("Error in job posting process:", error);
+      toast({
+        title: "Failed to post job",
+        description: error.message || "Please try again",
+        variant: "destructive"
+      });
     } finally {
-      setIsPosting(false);
+      setIsSubmitting(false);
     }
-  };
-
-  const viewWorkerProfile = (workerId: string) => {
-    // In a real app, this would navigate to the worker profile
-    toast.info(`Viewing worker profile (ID: ${workerId})`);
-    navigate(`/worker-profile/${workerId}`);
-  };
-
-  const inviteWorker = (workerId: string) => {
-    // In a real app, this would send an invitation to the worker
-    toast.success(`Invitation sent to worker (ID: ${workerId})`);
   };
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-grow py-16 px-4 mt-16">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-2">Post a New Job</h1>
-          <p className="text-lg text-gray-600 mb-8">
-            Find skilled workers for your short-term job needs
-          </p>
+      <main className="flex-grow bg-gray-50 py-12">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-extrabold text-gray-900">Post a New Job</h1>
+            <p className="mt-2 text-lg text-gray-600">
+              Find skilled workers quickly for your temporary or flexible job needs
+            </p>
+          </div>
 
-          {jobCreated ? (
-            <Card>
+          <Card>
+            <form onSubmit={handleSubmit}>
               <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="h-6 w-6 text-green-500" />
-                  <CardTitle>Job Posted Successfully!</CardTitle>
-                </div>
+                <CardTitle>Job Details</CardTitle>
+                <CardDescription>
+                  Fill in the details of your job posting to attract the right candidates
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="mb-4">
-                  Your job has been posted and is now visible to potential workers. You'll be notified when someone applies.
-                </p>
-                <div className="flex space-x-4">
-                  <Button variant="outline" onClick={() => setJobCreated(false)}>
-                    Post Another Job
-                  </Button>
-                  <Button onClick={() => navigate('/jobs')}>
-                    View All Jobs
-                  </Button>
+              
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Job Title</Label>
+                  <Input
+                    id="title"
+                    placeholder="e.g. Office Cleaning Staff"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="description">Job Description</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Describe the job responsibilities, requirements, and any other relevant details"
+                    rows={4}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    placeholder="e.g. Mumbai Central"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={jobDate}
+                      onChange={(e) => setJobDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="start-time">Start Time</Label>
+                    <Input
+                      id="start-time"
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="end-time">End Time</Label>
+                    <Input
+                      id="end-time"
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="payment">Payment (₹ per day)</Label>
+                    <Input
+                      id="payment"
+                      type="number"
+                      placeholder="e.g. 1500"
+                      value={payment}
+                      onChange={(e) => setPayment(e.target.value)}
+                      min={1}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Job Category</Label>
+                    <Select value={category} onValueChange={setCategory} required>
+                      <SelectTrigger id="category">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cleaning">Cleaning</SelectItem>
+                        <SelectItem value="Delivery">Delivery</SelectItem>
+                        <SelectItem value="Administration">Administration</SelectItem>
+                        <SelectItem value="Events">Events</SelectItem>
+                        <SelectItem value="Skilled Trade">Skilled Trade</SelectItem>
+                        <SelectItem value="Warehouse">Warehouse</SelectItem>
+                        <SelectItem value="Retail">Retail</SelectItem>
+                        <SelectItem value="Healthcare">Healthcare</SelectItem>
+                        <SelectItem value="Food Service">Food Service</SelectItem>
+                        <SelectItem value="Construction">Construction</SelectItem>
+                        <SelectItem value="Education">Education</SelectItem>
+                        <SelectItem value="Security">Security</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2">
-                <Card>
-                  <form onSubmit={handleSubmit}>
-                    <CardHeader>
-                      <CardTitle>Job Details</CardTitle>
-                      <CardDescription>
-                        Provide the details of the job you want to post
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="title">Job Title</Label>
-                        <Input
-                          id="title"
-                          placeholder="e.g. Office Cleaning Staff Needed"
-                          value={title}
-                          onChange={(e) => setTitle(e.target.value)}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="description">Job Description</Label>
-                        <Textarea
-                          id="description"
-                          placeholder="Describe the job in detail, including tasks, requirements, and any specific skills needed..."
-                          value={description}
-                          onChange={handleDescriptionChange}
-                          rows={6}
-                        />
-                        <div className="flex justify-end">
-                          <Button 
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={analyzeJobDescription}
-                            disabled={analyzing || description.length < 20}
-                            className="flex items-center"
-                          >
-                            {analyzing ? "Analyzing..." : "Analyze Description"}
-                            {!analyzing && <Search className="ml-2 h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="category">Job Category</Label>
-                          <Select value={category} onValueChange={setCategory}>
-                            <SelectTrigger id="category">
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {skillCategories.map((cat) => (
-                                <SelectItem key={cat} value={cat}>
-                                  {cat}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="location">Location</Label>
-                          <Select value={location} onValueChange={setLocation}>
-                            <SelectTrigger id="location">
-                              <SelectValue placeholder="Select location" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {locations.map((loc) => (
-                                <SelectItem key={loc} value={loc}>
-                                  {loc}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="date">Date</Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                id="date"
-                                variant="outline"
-                                className={cn(
-                                  "w-full text-left font-normal justify-start",
-                                  !date && "text-muted-foreground"
-                                )}
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {date ? format(date, "PPP") : "Select date"}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                              <Calendar
-                                mode="single"
-                                selected={date}
-                                onSelect={setDate}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="startTime">Start Time</Label>
-                          <Select value={startTime} onValueChange={setStartTime}>
-                            <SelectTrigger id="startTime">
-                              <SelectValue placeholder="Start time" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Array.from({ length: 24 }).map((_, i) => (
-                                <SelectItem key={`start-${i}`} value={`${i.toString().padStart(2, '0')}:00`}>
-                                  {`${i.toString().padStart(2, '0')}:00`}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="endTime">End Time</Label>
-                          <Select value={endTime} onValueChange={setEndTime}>
-                            <SelectTrigger id="endTime">
-                              <SelectValue placeholder="End time" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Array.from({ length: 24 }).map((_, i) => (
-                                <SelectItem key={`end-${i}`} value={`${i.toString().padStart(2, '0')}:00`}>
-                                  {`${i.toString().padStart(2, '0')}:00`}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="payment">Payment (₹)</Label>
-                        <Input
-                          id="payment"
-                          type="number"
-                          placeholder="e.g. 1500"
-                          value={payment}
-                          onChange={(e) => setPayment(e.target.value)}
-                        />
-                        <p className="text-xs text-gray-500">
-                          Enter the payment amount in Indian Rupees (₹)
-                        </p>
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button 
-                        type="submit" 
-                        className="w-full"
-                        disabled={isPosting}
-                      >
-                        {isPosting ? "Posting..." : "Post Job"}
-                      </Button>
-                    </CardFooter>
-                  </form>
-                </Card>
-              </div>
               
-              <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Job Summary</CardTitle>
-                    <CardDescription>
-                      Preview of your job posting
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {title ? (
-                      <div>
-                        <h3 className="text-lg font-semibold">{title}</h3>
-                        <div className="text-sm text-gray-500">{category}</div>
-                      </div>
-                    ) : (
-                      <div className="h-12 bg-gray-100 animate-pulse rounded"></div>
-                    )}
-                    
-                    <div className="grid grid-cols-1 gap-3">
-                      <div className="flex items-start">
-                        <MapPin className="h-5 w-5 text-gray-500 mr-3 mt-0.5" />
-                        <div>
-                          <div className="font-medium text-sm">Location</div>
-                          <div className="text-sm text-gray-600">{location || "Not specified"}</div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start">
-                        <CalendarIcon2 className="h-5 w-5 text-gray-500 mr-3 mt-0.5" />
-                        <div>
-                          <div className="font-medium text-sm">Date</div>
-                          <div className="text-sm text-gray-600">
-                            {date ? format(date, "MMMM d, yyyy") : "Not specified"}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start">
-                        <Clock className="h-5 w-5 text-gray-500 mr-3 mt-0.5" />
-                        <div>
-                          <div className="font-medium text-sm">Time</div>
-                          <div className="text-sm text-gray-600">
-                            {startTime && endTime 
-                              ? `${startTime} - ${endTime}` 
-                              : "Not specified"}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start">
-                        <DollarSign className="h-5 w-5 text-gray-500 mr-3 mt-0.5" />
-                        <div>
-                          <div className="font-medium text-sm">Payment</div>
-                          <div className="text-sm text-gray-600">
-                            {payment ? `₹${payment}` : "Not specified"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div className="font-medium text-sm mb-1">Description</div>
-                      {description ? (
-                        <p className="text-sm text-gray-600">{description}</p>
-                      ) : (
-                        <div className="h-20 bg-gray-100 animate-pulse rounded"></div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                {matchedWorkers.length > 0 && (
-                  <Card className="mt-6">
-                    <CardHeader>
-                      <CardTitle>Matched Workers</CardTitle>
-                      <CardDescription>
-                        Workers who match your job requirements
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {matchedWorkers.map((worker) => {
-                          const avgRating = worker.ratings.length > 0 
-                            ? worker.ratings.reduce((sum, r) => sum + r.score, 0) / worker.ratings.length 
-                            : 0;
-                            
-                          return (
-                            <div key={worker.id} className="flex justify-between items-start border-b pb-4 last:border-0 last:pb-0">
-                              <div>
-                                <div className="font-medium">{worker.name}</div>
-                                <div className="text-sm text-gray-500">{worker.location}</div>
-                                <div className="flex items-center mt-1">
-                                  {Array.from({ length: 5 }).map((_, i) => (
-                                    <Star 
-                                      key={i} 
-                                      className={`h-3 w-3 ${
-                                        i < Math.round(avgRating) 
-                                          ? 'text-yellow-400 fill-yellow-400' 
-                                          : 'text-gray-300'
-                                      }`} 
-                                    />
-                                  ))}
-                                  <span className="ml-1 text-xs text-gray-500">
-                                    ({worker.ratings.length})
-                                  </span>
-                                </div>
-                                <div className="text-xs text-gray-500 mt-1">
-                                  Skills: {worker.skills.slice(0, 3).map(s => s.name).join(", ")}
-                                </div>
-                              </div>
-                              <div className="flex flex-col space-y-2">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => viewWorkerProfile(worker.id)}
-                                >
-                                  View
-                                </Button>
-                                <Button 
-                                  size="sm"
-                                  onClick={() => inviteWorker(worker.id)}
-                                >
-                                  Invite
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
-          )}
+              <CardFooter className="flex justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(-1)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Posting..." : "Post Job"}
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
         </div>
       </main>
       <Footer />

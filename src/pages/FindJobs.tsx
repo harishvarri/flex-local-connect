@@ -13,7 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import AIJobRecommendations from "@/components/AIJobRecommendations";
 
-const jobs = [
+// Using a more complete set of job data
+const jobsData = [
   {
     id: "1",
     title: "Office Cleaning Staff Needed",
@@ -74,6 +75,54 @@ const jobs = [
     posted: "2 days ago",
     description: "Install lighting fixtures, set up workstations with proper cabling and ensure electrical safety.",
   },
+  {
+    id: "6",
+    title: "Warehouse Worker - Weekend Shift",
+    company: "Global Logistics",
+    location: "Nhava Sheva",
+    date: "Sat-Sun, 18-19th April",
+    time: "8:00 AM - 6:00 PM",
+    rate: "₹1800 per day",
+    category: "Warehouse",
+    posted: "1 day ago",
+    description: "Loading and unloading containers, organizing inventory, and preparing shipments.",
+  },
+  {
+    id: "7",
+    title: "Bartender for Wedding",
+    company: "Signature Events",
+    location: "Juhu",
+    date: "Sat, 20th April",
+    time: "3:00 PM - 12:00 AM",
+    rate: "₹2500 per event",
+    category: "Food Service",
+    posted: "4 days ago",
+    description: "Prepare and serve drinks at a high-end wedding. Experience with cocktail preparation required.",
+  },
+  {
+    id: "8",
+    title: "Home Healthcare Assistant",
+    company: "Care For You",
+    location: "Bandra West",
+    date: "Mon-Fri, Weekly",
+    time: "9:00 AM - 1:00 PM",
+    rate: "₹1200 per day",
+    category: "Healthcare",
+    posted: "2 days ago",
+    description: "Assist an elderly person with daily activities, medication reminders, and light housekeeping.",
+  },
+  {
+    id: "9",
+    title: "Retail Associate - Weekend Only",
+    company: "Fashion Forward",
+    location: "Phoenix Mall, Lower Parel",
+    date: "Sat-Sun, Weekly",
+    time: "11:00 AM - 8:00 PM",
+    rate: "₹1300 per day",
+    category: "Retail",
+    posted: "5 days ago",
+    description: "Assist customers, manage inventory, and operate the cash register at our clothing store.",
+  }
 ];
 
 const FindJobs = () => {
@@ -82,8 +131,10 @@ const FindJobs = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [filteredJobs, setFilteredJobs] = useState(jobs);
+  const [filteredJobs, setFilteredJobs] = useState(jobsData);
+  const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [databaseJobs, setDatabaseJobs] = useState<any[]>([]);
 
   useEffect(() => {
     if (location.state?.locationFilter) {
@@ -98,10 +149,64 @@ const FindJobs = () => {
     };
     
     checkAuth();
+    fetchJobs();
   }, []);
 
+  const fetchJobs = async () => {
+    setIsLoading(true);
+    try {
+      // Try to fetch real jobs from the database
+      const { data, error } = await supabase
+        .from('jobs')
+        .select(`
+          *,
+          employer_profiles!jobs_employer_id_fkey (
+            company_name,
+            profiles (
+              name
+            )
+          )
+        `)
+        .eq('status', 'open');
+
+      if (error) {
+        console.error("Error fetching jobs:", error);
+        // Fall back to dummy data
+        setFilteredJobs(jobsData);
+      } else if (data && data.length > 0) {
+        // Format the data from the database
+        const formattedJobs = data.map(job => ({
+          id: job.id,
+          title: job.title,
+          company: job.employer_profiles?.company_name || "Unknown Company",
+          location: job.location,
+          date: new Date(job.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+          time: `${job.start_time} - ${job.end_time}`,
+          rate: `₹${job.payment} per day`,
+          category: "Job", // We would need to fetch this from job_skills
+          posted: new Date(job.created_at).toLocaleDateString(),
+          description: job.description,
+        }));
+        
+        setDatabaseJobs(formattedJobs);
+        setFilteredJobs(formattedJobs.length > 0 ? formattedJobs : jobsData);
+      } else {
+        // No jobs in database, use dummy data
+        setFilteredJobs(jobsData);
+      }
+    } catch (error) {
+      console.error("Error in fetchJobs:", error);
+      setFilteredJobs(jobsData);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let result = jobs;
+    // Use database jobs if available, otherwise use dummy data
+    const jobsToFilter = databaseJobs.length > 0 ? databaseJobs : jobsData;
+    
+    let result = jobsToFilter;
     
     if (searchTerm) {
       result = result.filter(job => 
@@ -124,9 +229,9 @@ const FindJobs = () => {
     }
     
     setFilteredJobs(result);
-  }, [searchTerm, locationFilter, categoryFilter]);
+  }, [searchTerm, locationFilter, categoryFilter, databaseJobs]);
 
-  const handleApplyClick = (job: typeof jobs[0]) => {
+  const handleApplyClick = (job: typeof jobsData[0]) => {
     if (isLoggedIn) {
       navigate("/job-application", { state: { job } });
     } else {
@@ -197,6 +302,10 @@ const FindJobs = () => {
                     <SelectItem value="Administration">Administration</SelectItem>
                     <SelectItem value="Events">Events</SelectItem>
                     <SelectItem value="Skilled Trade">Skilled Trades</SelectItem>
+                    <SelectItem value="Warehouse">Warehouse</SelectItem>
+                    <SelectItem value="Retail">Retail</SelectItem>
+                    <SelectItem value="Healthcare">Healthcare</SelectItem>
+                    <SelectItem value="Food Service">Food Service</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -229,49 +338,72 @@ const FindJobs = () => {
 
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Found {filteredJobs.length} Jobs {locationFilter && `in ${locationFilter}`}
+              {isLoading ? 'Loading jobs...' : `Found ${filteredJobs.length} Jobs ${locationFilter && `in ${locationFilter}`}`}
             </h2>
 
             <div className="space-y-4">
-              {filteredJobs.map((job) => (
-                <Card key={job.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-xl">{job.title}</CardTitle>
-                        <p className="text-sm text-gray-500">{job.company}</p>
+              {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i} className="hover:shadow-md transition-shadow animate-pulse">
+                    <CardHeader className="pb-2">
+                      <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    </CardHeader>
+                    <CardContent className="pb-2">
+                      <div className="h-4 bg-gray-200 rounded w-full mb-4"></div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div className="h-4 bg-gray-200 rounded"></div>
+                        <div className="h-4 bg-gray-200 rounded"></div>
+                        <div className="h-4 bg-gray-200 rounded"></div>
                       </div>
-                      <Badge>{job.category}</Badge>
-                    </div>
-                  </CardHeader>
+                    </CardContent>
+                    <CardFooter className="border-t pt-4">
+                      <div className="flex justify-between w-full">
+                        <div className="h-4 bg-gray-200 rounded w-20"></div>
+                        <div className="h-9 bg-gray-200 rounded w-24"></div>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : filteredJobs.length > 0 ? (
+                filteredJobs.map((job) => (
+                  <Card key={job.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-xl">{job.title}</CardTitle>
+                          <p className="text-sm text-gray-500">{job.company}</p>
+                        </div>
+                        <Badge>{job.category}</Badge>
+                      </div>
+                    </CardHeader>
 
-                  <CardContent className="pb-2">
-                    <p className="text-sm text-gray-600 mb-4">{job.description}</p>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
-                      <div className="flex items-center text-gray-600">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        {job.location}
+                    <CardContent className="pb-2">
+                      <p className="text-sm text-gray-600 mb-4">{job.description}</p>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+                        <div className="flex items-center text-gray-600">
+                          <MapPin className="h-4 w-4 mr-2" />
+                          {job.location}
+                        </div>
+                        <div className="flex items-center text-gray-600">
+                          <Calendar className="h-4 w-4 mr-2" />
+                          {job.date}, {job.time}
+                        </div>
+                        <div className="flex items-center text-gray-600">
+                          <DollarSign className="h-4 w-4 mr-2" />
+                          {job.rate}
+                        </div>
                       </div>
-                      <div className="flex items-center text-gray-600">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        {job.date}, {job.time}
-                      </div>
-                      <div className="flex items-center text-gray-600">
-                        <DollarSign className="h-4 w-4 mr-2" />
-                        {job.rate}
-                      </div>
-                    </div>
-                  </CardContent>
+                    </CardContent>
 
-                  <CardFooter className="flex justify-between items-center border-t pt-4">
-                    <p className="text-xs text-gray-500">Posted {job.posted}</p>
-                    <Button onClick={() => handleApplyClick(job)}>Apply Now</Button>
-                  </CardFooter>
-                </Card>
-              ))}
-
-              {filteredJobs.length === 0 && (
+                    <CardFooter className="flex justify-between items-center border-t pt-4">
+                      <p className="text-xs text-gray-500">Posted {job.posted}</p>
+                      <Button onClick={() => handleApplyClick(job)}>Apply Now</Button>
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : (
                 <div className="text-center py-8">
                   <p className="text-gray-500">No jobs found matching your criteria</p>
                   <Button 
