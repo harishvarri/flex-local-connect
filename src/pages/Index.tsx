@@ -12,7 +12,6 @@ import Footer from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { dummyWorkers, dummyJobs } from "@/utils/dummyData";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -30,12 +29,8 @@ const Index = () => {
           
         if (error) {
           console.error("Database connection error:", error);
-          // Still load the demo data
-          console.log("Loading demo data with 50+ workers:", dummyWorkers.length);
-          console.log("Loading demo data with jobs:", dummyJobs.length);
         } else {
           console.log("Database connection successful");
-          console.log("Using demo data with 50+ workers:", dummyWorkers.length);
         }
       } catch (err) {
         console.error("Error checking database connection:", err);
@@ -44,10 +39,6 @@ const Index = () => {
     
     checkConnection();
   }, []);
-
-  const handleFeatureClick = (path: string) => {
-    navigate(path);
-  };
 
   return (
     <div className="min-h-screen">

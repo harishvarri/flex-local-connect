@@ -1,99 +1,62 @@
 
-// This is a new file we need to create to add our new routes
-import React, { Suspense } from "react";
-import { Routes, Route, BrowserRouter, Navigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
-import { Toaster } from "sonner";
-
-import Index from "@/pages/Index";
-import Login from "@/pages/Login";
-import Register from "@/pages/Register";
-import Dashboard from "@/pages/Dashboard";
-import FindJobs from "@/pages/FindJobs";
-import FindWorkers from "@/pages/FindWorkers";
-import NotFound from "@/pages/NotFound";
-import Profile from "@/pages/Profile";
-import JobApplication from "@/pages/JobApplication";
-import MatchingPage from "@/pages/MatchingPage";
-import CategoryPage from "@/pages/CategoryPage";
-import Locations from "@/pages/Locations";
-import PostJob from "@/pages/PostJob";
-import AvailabilityCalendar from "@/pages/AvailabilityCalendar";
-import Messages from "@/pages/Messages";
-import Ratings from "@/pages/Ratings";
-
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import AuthGuard from "@/components/AuthGuard";
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import FindJobs from "./pages/FindJobs";
+import FindWorkers from "./pages/FindWorkers";
+import HowItWorks from "./pages/HowItWorks";
+import NotFound from "./pages/NotFound";
+import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import JobApplication from "./pages/JobApplication";
+import Locations from "./pages/Locations";
+import DummyData from "./pages/DummyData";
+import WorkersList from "./pages/WorkersList";
+import JobsList from "./pages/JobsList";
+import MatchingPage from "./pages/MatchingPage";
+import CategoryPage from "./pages/CategoryPage";
+import AuthGuard from "./components/AuthGuard";
 
-function App() {
+const queryClient = new QueryClient();
+
+const App = () => {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Suspense
-          fallback={
-            <div className="flex h-screen w-full items-center justify-center">
-              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            </div>
-          }
-        >
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/jobs" element={<FindJobs />} />
-            <Route path="/workers" element={<FindWorkers />} />
-            <Route path="/jobs/:category" element={<CategoryPage />} />
-            <Route path="/locations" element={<Locations />} />
-            
-            {/* New public routes */}
-            <Route path="/calendar" element={<AvailabilityCalendar />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/ratings" element={<Ratings />} />
-            <Route path="/post-job" element={<PostJob />} />
-            
-            {/* Protected routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <AuthGuard>
-                  <Dashboard />
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <AuthGuard>
-                  <Profile />
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/job-application"
-              element={
-                <AuthGuard>
-                  <JobApplication />
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/matching"
-              element={
-                <AuthGuard>
-                  <MatchingPage />
-                </AuthGuard>
-              }
-            />
-            
-            {/* 404 Route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
-        <Toaster position="top-right" />
-      </AuthProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/find-jobs" element={<FindJobs />} />
+              <Route path="/find-workers" element={<FindWorkers />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
+              <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
+              <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
+              <Route path="/job-application" element={<AuthGuard><JobApplication /></AuthGuard>} />
+              <Route path="/locations" element={<Locations />} />
+              <Route path="/dummy-data" element={<DummyData />} />
+              <Route path="/workers" element={<WorkersList />} />
+              <Route path="/jobs" element={<JobsList />} />
+              <Route path="/matching" element={<MatchingPage />} />
+              <Route path="/jobs/:category" element={<CategoryPage />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
-}
+};
 
 export default App;

@@ -31,21 +31,21 @@ const features = [
     description:
       "Set your work schedule and find jobs that fit your availability.",
     icon: Calendar,
-    path: "/calendar",
+    path: "/dashboard",
   },
   {
     name: "In-app Messaging",
     description:
       "Communicate directly with employers or workers after job acceptance.",
     icon: MessageSquare,
-    path: "/messages",
+    path: "/dashboard",
   },
   {
     name: "Ratings & Reviews",
     description:
       "Build trust with ratings and reviews based on job performance.",
     icon: Star,
-    path: "/ratings",
+    path: "/dashboard",
   },
 ];
 
