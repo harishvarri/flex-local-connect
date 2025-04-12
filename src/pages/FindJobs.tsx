@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -13,7 +12,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import AIJobRecommendations from "@/components/AIJobRecommendations";
 
-// Using a more complete set of job data
 const jobsData = [
   {
     id: "1",
@@ -135,6 +133,7 @@ const FindJobs = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [databaseJobs, setDatabaseJobs] = useState<any[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     if (location.state?.locationFilter) {
@@ -144,8 +143,13 @@ const FindJobs = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      setIsLoggedIn(!!data.session);
+      try {
+        const { data } = await supabase.auth.getSession();
+        setIsLoggedIn(!!data.session);
+      } catch (error) {
+        console.error("Error checking auth:", error);
+        setIsLoggedIn(false);
+      }
     };
     
     checkAuth();
@@ -154,8 +158,9 @@ const FindJobs = () => {
 
   const fetchJobs = async () => {
     setIsLoading(true);
+    setFetchError(null);
+    
     try {
-      // Try to fetch real jobs from the database
       const { data, error } = await supabase
         .from('jobs')
         .select(`
@@ -171,10 +176,9 @@ const FindJobs = () => {
 
       if (error) {
         console.error("Error fetching jobs:", error);
-        // Fall back to dummy data
+        setFetchError("Could not load jobs from database. Using sample data instead.");
         setFilteredJobs(jobsData);
       } else if (data && data.length > 0) {
-        // Format the data from the database
         const formattedJobs = data.map(job => ({
           id: job.id,
           title: job.title,
@@ -183,19 +187,20 @@ const FindJobs = () => {
           date: new Date(job.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
           time: `${job.start_time} - ${job.end_time}`,
           rate: `₹${job.payment} per day`,
-          category: "Job", // We would need to fetch this from job_skills
+          category: "Job",
           posted: new Date(job.created_at).toLocaleDateString(),
           description: job.description,
         }));
         
         setDatabaseJobs(formattedJobs);
-        setFilteredJobs(formattedJobs.length > 0 ? formattedJobs : jobsData);
+        setFilteredJobs(formattedJobs);
       } else {
-        // No jobs in database, use dummy data
+        setFetchError("No jobs found in database. Using sample data instead.");
         setFilteredJobs(jobsData);
       }
     } catch (error) {
       console.error("Error in fetchJobs:", error);
+      setFetchError("Failed to load jobs. Using sample data instead.");
       setFilteredJobs(jobsData);
     } finally {
       setIsLoading(false);
@@ -203,7 +208,6 @@ const FindJobs = () => {
   };
 
   useEffect(() => {
-    // Use database jobs if available, otherwise use dummy data
     const jobsToFilter = databaseJobs.length > 0 ? databaseJobs : jobsData;
     
     let result = jobsToFilter;
@@ -325,6 +329,16 @@ const FindJobs = () => {
               </div>
             </div>
           </div>
+
+          {fetchError && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8">
+              <div className="flex">
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">{fetchError}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <AIJobRecommendations 
             searchTerm={searchTerm}

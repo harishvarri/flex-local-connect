@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 interface AuthContextType {
   user: User | null;
-  appUser: User | null; // Added appUser property
+  appUser: User | null;
   isLoading: boolean;
   signUp: (email: string, password: string, userData: any) => Promise<{
     error: Error | null;
@@ -15,14 +15,14 @@ interface AuthContextType {
     error: Error | null;
   }>;
   signOut: () => Promise<void>;
-  refreshUser: () => Promise<void>; // Added refreshUser method
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [appUser, setAppUser] = useState<User | null>(null); // State for appUser
+  const [appUser, setAppUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Add a refreshUser function to reload user data
@@ -83,6 +83,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     fetchUser();
 
+    // Set up auth listener using onAuthStateChange
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.info("Auth state changed:", event);
       
@@ -112,6 +113,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       if (profileError) {
         console.error("Error getting user role:", profileError);
+        setIsLoading(false);
         return;
       }
       
@@ -138,8 +140,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(userData);
         setAppUser(userData);
       }
+      setIsLoading(false);
     } catch (error) {
       console.error("Error in getUserRole:", error);
+      setIsLoading(false);
     }
   };
 
@@ -160,7 +164,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       });
       
-      if (error) return { error };
+      if (error) {
+        setIsLoading(false);
+        return { error };
+      }
       
       if (data.user) {
         // Create profile record manually in case the trigger doesn't work immediately
@@ -275,13 +282,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.error("Error in profile creation:", error);
         }
       }
-
+      
+      setIsLoading(false);
       return { error: null };
     } catch (error: any) {
       console.error("Error in signUp:", error);
-      return { error };
-    } finally {
       setIsLoading(false);
+      return { error };
     }
   };
 
@@ -294,18 +301,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         password
       });
       
-      if (error) return { error };
+      if (error) {
+        setIsLoading(false);
+        return { error };
+      }
       
       if (data.user) {
         await getUserRole(data.user.id);
+      } else {
+        setIsLoading(false);
       }
       
       return { error: null };
     } catch (error: any) {
       console.error("Error in signIn:", error);
-      return { error };
-    } finally {
       setIsLoading(false);
+      return { error };
     }
   };
 
@@ -314,6 +325,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       await supabase.auth.signOut();
       setUser(null);
+      setAppUser(null);
       toast.success("Successfully signed out");
     } catch (error) {
       console.error("Error in signOut:", error);

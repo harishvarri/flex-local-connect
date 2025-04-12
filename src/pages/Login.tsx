@@ -22,11 +22,11 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, user } = useAuth();
+  const { signIn, user, isLoading } = useAuth();
   
   // Get return URL from location state or default to dashboard
   const returnTo = location.state?.returnTo || "/dashboard";
@@ -46,7 +46,7 @@ const Login = () => {
       return;
     }
     
-    setIsLoading(true);
+    setIsSubmitting(true);
     
     try {
       const { error } = await signIn(email, password);
@@ -61,7 +61,7 @@ const Login = () => {
       console.error("Login error:", error);
       toast.error("An unexpected error occurred");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -99,6 +99,7 @@ const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -116,6 +117,7 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -128,6 +130,7 @@ const Login = () => {
                         setRememberMe(checked);
                       }
                     }}
+                    disabled={isSubmitting}
                   />
                   <Label htmlFor="remember" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     Remember me
@@ -136,8 +139,12 @@ const Login = () => {
               </CardContent>
 
               <CardFooter className="flex flex-col space-y-4">
-                <Button className="w-full" type="submit" disabled={isLoading}>
-                  {isLoading ? "Signing in..." : "Sign In"}
+                <Button 
+                  className="w-full" 
+                  type="submit" 
+                  disabled={isSubmitting || isLoading}
+                >
+                  {isSubmitting ? "Signing in..." : "Sign In"}
                 </Button>
               </CardFooter>
             </form>
