@@ -52,18 +52,20 @@ const Login = () => {
       const { error } = await signIn(email, password);
       
       if (error) {
-        toast.error(error.message);
+        toast.error(error.message || "Login failed. Please check your credentials.");
       } else {
         toast.success("Login successful!");
         navigate(returnTo);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
-      toast.error("An unexpected error occurred");
+      toast.error(error?.message || "An unexpected error occurred");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const isButtonDisabled = isSubmitting || isLoading;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -99,16 +101,16 @@ const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    disabled={isSubmitting}
+                    disabled={isButtonDisabled}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Password</Label>
-                    <Link to="/forgot-password" className="text-sm font-medium text-smartflex-blue hover:underline">
+                    <span className="text-sm font-medium text-smartflex-blue">
                       Forgot password?
-                    </Link>
+                    </span>
                   </div>
                   <Input 
                     id="password" 
@@ -117,7 +119,7 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    disabled={isSubmitting}
+                    disabled={isButtonDisabled}
                   />
                 </div>
 
@@ -130,7 +132,7 @@ const Login = () => {
                         setRememberMe(checked);
                       }
                     }}
-                    disabled={isSubmitting}
+                    disabled={isButtonDisabled}
                   />
                   <Label htmlFor="remember" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     Remember me
@@ -142,7 +144,7 @@ const Login = () => {
                 <Button 
                   className="w-full" 
                   type="submit" 
-                  disabled={isSubmitting || isLoading}
+                  disabled={isButtonDisabled}
                 >
                   {isSubmitting ? "Signing in..." : "Sign In"}
                 </Button>

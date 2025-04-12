@@ -104,12 +104,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const getUserRole = async (userId: string) => {
     try {
+      setIsLoading(true);
       // Get the user role from the profiles table
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*, worker_profiles:worker_profiles(expected_wage), employer_profiles:employer_profiles(company_name)")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
       
       if (profileError) {
         console.error("Error getting user role:", profileError);
@@ -139,10 +140,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         setUser(userData);
         setAppUser(userData);
+      } else {
+        // No profile found, but auth says user is logged in
+        console.warn("User authenticated but no profile found");
       }
-      setIsLoading(false);
     } catch (error) {
       console.error("Error in getUserRole:", error);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -165,7 +169,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       
       if (error) {
-        setIsLoading(false);
+        console.error("Signup error:", error);
         return { error };
       }
       
@@ -283,12 +287,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       }
       
-      setIsLoading(false);
       return { error: null };
     } catch (error: any) {
       console.error("Error in signUp:", error);
-      setIsLoading(false);
       return { error };
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -302,34 +306,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       
       if (error) {
-        setIsLoading(false);
+        console.error("Sign in error:", error);
         return { error };
       }
       
       if (data.user) {
         await getUserRole(data.user.id);
       } else {
-        setIsLoading(false);
+        console.warn("No user returned from signIn");
       }
       
       return { error: null };
     } catch (error: any) {
       console.error("Error in signIn:", error);
-      setIsLoading(false);
       return { error };
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const signOut = async () => {
     try {
       setIsLoading(true);
-      await supabase.auth.signOut();
-      setUser(null);
-      setAppUser(null);
-      toast.success("Successfully signed out");
-    } catch (error) {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("Sign out error:", error);
+        toast.error("Failed to sign out: " + error.message);
+      } else {
+        setUser(null);
+        setAppUser(null);
+        toast.success("Successfully signed out");
+      }
+    } catch (error: any) {
       console.error("Error in signOut:", error);
-      toast.error("Failed to sign out");
+      toast.error("Failed to sign out: " + (error.message || "Unknown error"));
     } finally {
       setIsLoading(false);
     }

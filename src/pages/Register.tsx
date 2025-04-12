@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useLocation as useRouterLocation, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -136,14 +135,14 @@ const Register = () => {
       const { error } = await signUp(email, password, userData);
       
       if (error) {
-        toast.error(error.message);
+        toast.error(error.message || "Registration failed. Please try again.");
       } else {
         toast.success("Registration successful! Please check your email to confirm your account.");
         navigate("/login");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration error:", error);
-      toast.error("An unexpected error occurred");
+      toast.error(error?.message || "An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -189,6 +188,7 @@ const Register = () => {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -201,6 +201,7 @@ const Register = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -213,6 +214,7 @@ const Register = () => {
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         required
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -223,6 +225,7 @@ const Register = () => {
                         placeholder="Enter your city" 
                         value={userLocation}
                         onChange={(e) => setUserLocation(e.target.value)}
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -234,6 +237,7 @@ const Register = () => {
                         value={bio}
                         onChange={(e) => setBio(e.target.value)}
                         rows={3}
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -245,6 +249,7 @@ const Register = () => {
                         value={experience}
                         onChange={(e) => setExperience(e.target.value)}
                         rows={2}
+                        disabled={isLoading || authLoading}
                       />
                     </div>
                     
@@ -257,6 +262,7 @@ const Register = () => {
                         value={expectedWage}
                         onChange={(e) => setExpectedWage(e.target.value)}
                         min={0}
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -268,10 +274,12 @@ const Register = () => {
                           value={currentSkill}
                           onChange={(e) => setCurrentSkill(e.target.value)}
                           className="flex-grow"
+                          disabled={isLoading || authLoading}
                         />
                         <Select 
                           value={currentSkillLevel} 
                           onValueChange={setCurrentSkillLevel}
+                          disabled={isLoading || authLoading}
                         >
                           <SelectTrigger className="w-[110px]">
                             <SelectValue placeholder="Level" />
@@ -285,6 +293,7 @@ const Register = () => {
                         <Button 
                           type="button" 
                           onClick={handleAddSkill}
+                          disabled={isLoading || authLoading || !currentSkill.trim()}
                         >
                           Add
                         </Button>
@@ -308,6 +317,7 @@ const Register = () => {
                                 size="icon"
                                 className="h-5 w-5 rounded-full"
                                 onClick={() => handleRemoveSkill(skill.name)}
+                                disabled={isLoading || authLoading}
                               >
                                 <X className="h-3 w-3" />
                               </Button>
@@ -326,6 +336,7 @@ const Register = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -338,12 +349,17 @@ const Register = () => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
+                        disabled={isLoading || authLoading}
                       />
                     </div>
                   </CardContent>
 
                   <CardFooter>
-                    <Button className="w-full" type="submit" disabled={isLoading || authLoading}>
+                    <Button 
+                      className="w-full" 
+                      type="submit" 
+                      disabled={isLoading || authLoading}
+                    >
                       {isLoading ? "Creating Account..." : "Create Worker Account"}
                     </Button>
                   </CardFooter>
@@ -368,6 +384,7 @@ const Register = () => {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -379,6 +396,7 @@ const Register = () => {
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
                         required
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -389,6 +407,7 @@ const Register = () => {
                         placeholder="Enter your industry" 
                         value={industry}
                         onChange={(e) => setIndustry(e.target.value)}
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -401,6 +420,7 @@ const Register = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -413,6 +433,7 @@ const Register = () => {
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         required
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -423,6 +444,7 @@ const Register = () => {
                         placeholder="Enter your city" 
                         value={userLocation}
                         onChange={(e) => setUserLocation(e.target.value)}
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -434,6 +456,7 @@ const Register = () => {
                         value={bio}
                         onChange={(e) => setBio(e.target.value)}
                         rows={3}
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -446,6 +469,7 @@ const Register = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        disabled={isLoading || authLoading}
                       />
                     </div>
 
@@ -458,12 +482,17 @@ const Register = () => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
+                        disabled={isLoading || authLoading}
                       />
                     </div>
                   </CardContent>
 
                   <CardFooter>
-                    <Button className="w-full" type="submit" disabled={isLoading || authLoading}>
+                    <Button 
+                      className="w-full" 
+                      type="submit" 
+                      disabled={isLoading || authLoading}
+                    >
                       {isLoading ? "Creating Account..." : "Create Employer Account"}
                     </Button>
                   </CardFooter>
