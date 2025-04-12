@@ -1,11 +1,12 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@/types";
+import { User, UserRole } from "@/types";
 import { toast } from "sonner";
 
 interface AuthContextType {
   user: User | null;
+  appUser: User | null; // Added appUser property
   isLoading: boolean;
   signUp: (email: string, password: string, userData: any) => Promise<{
     error: Error | null;
@@ -14,13 +15,28 @@ interface AuthContextType {
     error: Error | null;
   }>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>; // Added refreshUser method
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [appUser, setAppUser] = useState<User | null>(null); // State for appUser
   const [isLoading, setIsLoading] = useState(true);
+
+  // Add a refreshUser function to reload user data
+  const refreshUser = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (sessionData.session && sessionData.session.user) {
+        await getUserRole(sessionData.session.user.id);
+      }
+    } catch (error) {
+      console.error("Error in refreshUser:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -30,6 +46,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (sessionError) {
           console.error("Error getting session:", sessionError);
           setUser(null);
+          setAppUser(null);
           setIsLoading(false);
           return;
         }
@@ -40,6 +57,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (userError) {
             console.error("Error getting user:", userError);
             setUser(null);
+            setAppUser(null);
             setIsLoading(false);
             return;
           }
@@ -48,13 +66,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             await getUserRole(userData.user.id);
           } else {
             setUser(null);
+            setAppUser(null);
           }
         } else {
           setUser(null);
+          setAppUser(null);
         }
       } catch (error) {
         console.error("Error in fetchUser:", error);
         setUser(null);
+        setAppUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -69,6 +90,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await getUserRole(session.user.id);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
+        setAppUser(null);
       }
     });
 
@@ -94,11 +116,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       
       if (profileData) {
-        setUser({
+        const userData = {
           id: profileData.id,
           email: profileData.email,
           name: profileData.name,
-          role: profileData.role,
+          role: profileData.role as UserRole,
           avatar: profileData.avatar,
           phone: profileData.phone,
           location: profileData.location,
@@ -111,7 +133,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           ...(profileData.role === 'employer' && profileData.employer_profiles 
             ? { companyName: profileData.employer_profiles.company_name } 
             : {})
-        });
+        };
+        
+        setUser(userData);
+        setAppUser(userData);
       }
     } catch (error) {
       console.error("Error in getUserRole:", error);
@@ -300,10 +325,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const value = {
     user,
+    appUser,
     isLoading,
     signUp,
     signIn,
-    signOut
+    signOut,
+    refreshUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
