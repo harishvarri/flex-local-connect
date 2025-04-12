@@ -101,7 +101,7 @@ const AuthenticatedNavbar = () => {
                     Dashboard
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-500">
                     <LogOut className="h-4 w-4 mr-2" />
                     Log out
                   </DropdownMenuItem>
@@ -176,6 +176,7 @@ const AuthenticatedNavbar = () => {
                 <Button 
                   className="w-full"
                   onClick={handleLogout}
+                  variant="destructive"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   Log out
