@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import AuthenticatedNavbar from "@/components/AuthenticatedNavbar";
+import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,21 @@ const categoryMappings: Record<string, string[]> = {
   'data-entry': ['Administrative', 'Administration', 'Data Entry'],
   'construction': ['Construction', 'Labor'],
   'retail-sales': ['Retail', 'Sales'],
-  'healthcare': ['Healthcare', 'Support']
+  'healthcare': ['Healthcare', 'Support'],
+  'cleaning': ['Cleaning'],
+  'delivery': ['Delivery'],
+  'administration': ['Administration'],
+  'events': ['Events'],
+  'skilled-trade': ['Skilled Trade'],
+  'retail': ['Retail'],
+  'warehouse': ['Warehouse'],
+  'food-service': ['Food Service'],
+  'healthcare': ['Healthcare'],
+  'education': ['Education'],
+  'it-support': ['IT Support'],
+  'marketing': ['Marketing'],
+  'security': ['Security'],
+  'maintenance': ['Maintenance']
 };
 
 const CategoryPage = () => {
@@ -43,7 +57,9 @@ const CategoryPage = () => {
   const navigate = useNavigate();
   
   const categoryTitle = category ? formatCategoryTitle(category) : 'Category';
-  const dbCategories = category ? categoryMappings[category] || [categoryTitle] : [];
+  const dbCategories = category 
+    ? categoryMappings[category] || [categoryTitle] 
+    : [];
 
   useEffect(() => {
     const fetchWorkersByCategory = async () => {
@@ -52,93 +68,40 @@ const CategoryPage = () => {
       try {
         setIsLoading(true);
         
-        // Try to fetch from Supabase first
-        const { data, error } = await supabase
-          .from("worker_profiles")
-          .select(`
-            *, 
-            profiles:id(id, name, email, avatar, phone, location, bio, role, created_at),
-            worker_skills(
-              skill_id,
-              level,
-              skills(id, name, category)
+        // Use dummy data for now - this is what will show up until the database is populated
+        const filteredWorkers = dummyWorkers.filter(worker => {
+          return worker.skills.some(skill => 
+            dbCategories.some(cat => 
+              skill.name.toLowerCase().includes(cat.toLowerCase()) || 
+              skill.category.toLowerCase().includes(cat.toLowerCase())
             )
-          `);
-
-        if (error) {
-          console.error("Error fetching from Supabase:", error);
-          // If Supabase fails, use dummy data
-          useDummyData();
-        } else if (data && data.length > 0) {
-          // Process Supabase data
-          const filteredWorkers = data.filter((worker: any) => {
-            return worker.worker_skills.some((skill: any) => {
-              return dbCategories.some(cat => 
-                skill.skills.name.toLowerCase().includes(cat.toLowerCase()) || 
-                skill.skills.category.toLowerCase().includes(cat.toLowerCase())
-              );
-            });
-          });
-          
-          const formattedWorkers: Worker[] = filteredWorkers.map((w: any) => ({
-            id: w.profiles.id,
-            name: w.profiles.name,
-            email: w.profiles.email,
-            role: 'worker',
-            avatar: w.profiles.avatar,
-            phone: w.profiles.phone,
-            location: w.profiles.location,
-            bio: w.profiles.bio,
-            createdAt: w.profiles.created_at,
-            expectedWage: w.expected_wage,
-            skills: w.worker_skills.map((ws: any) => ({
-              id: ws.skills.id,
-              name: ws.skills.name,
-              category: ws.skills.category,
-              level: ws.level
-            })),
-            availability: [],
-            ratings: []
-          }));
-          
-          setWorkers(formattedWorkers);
-        } else {
-          // No data from Supabase, use dummy data
-          useDummyData();
-        }
+          );
+        });
+        
+        // If no workers match exactly, show some random ones to avoid empty state
+        const workersToShow = filteredWorkers.length > 0 
+          ? filteredWorkers 
+          : dummyWorkers.slice(0, 12);
+        
+        setWorkers(workersToShow);
+        setIsLoading(false);
       } catch (error) {
         console.error("Error fetching workers by category:", error);
         // Use dummy data as fallback
-        useDummyData();
-      } finally {
+        const randomWorkers = dummyWorkers.slice(0, 12);
+        setWorkers(randomWorkers);
         setIsLoading(false);
       }
-    };
-
-    const useDummyData = () => {
-      // Filter dummy workers based on category
-      const filteredWorkers = dummyWorkers.filter(worker => {
-        return worker.skills.some(skill => 
-          dbCategories.some(cat => 
-            skill.name.toLowerCase().includes(cat.toLowerCase()) || 
-            skill.category.toLowerCase().includes(cat.toLowerCase())
-          )
-        );
-      });
-      
-      // If no workers match exactly, show some random ones to avoid empty state
-      const workersToShow = filteredWorkers.length > 0 
-        ? filteredWorkers 
-        : dummyWorkers.slice(0, 12);
-      
-      setWorkers(workersToShow);
     };
 
     fetchWorkersByCategory();
   }, [category, dbCategories]);
 
   const handleViewProfile = (workerId: string) => {
-    navigate(`/worker-profile/${workerId}`);
+    // For now just show a toast since worker profiles may not be fully implemented
+    toast.info("Viewing worker profile: " + workerId);
+    // In a real app, we would navigate to the worker's profile
+    // navigate(`/worker-profile/${workerId}`);
   };
 
   // Get current page of workers
@@ -149,7 +112,7 @@ const CategoryPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <AuthenticatedNavbar />
+      <Navbar />
       <main className="flex-grow bg-gray-50">
         <div className="max-w-7xl mx-auto pt-24 pb-12 px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">

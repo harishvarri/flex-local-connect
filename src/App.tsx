@@ -1,5 +1,4 @@
 
-// This is a new file we need to create to add our new routes
 import React, { Suspense } from "react";
 import { Routes, Route, BrowserRouter, Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -47,15 +46,18 @@ function App() {
             <Route path="/find-jobs" element={<FindJobs />} />
             <Route path="/workers" element={<WorkersList />} />
             <Route path="/find-workers" element={<WorkersList />} />
+            
+            {/* Category route - make sure it matches the pattern used in CategoryGrid */}
             <Route path="/jobs/:category" element={<CategoryPage />} />
+            
             <Route path="/locations" element={<Locations />} />
             <Route path="/how-it-works" element={<HowItWorks />} />
+            <Route path="/post-job" element={<PostJob />} />
             
             {/* New public routes */}
             <Route path="/calendar" element={<AvailabilityCalendar />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/ratings" element={<Ratings />} />
-            <Route path="/post-job" element={<PostJob />} />
             
             {/* Protected routes */}
             <Route

@@ -16,6 +16,8 @@ import { CalendarIcon, Briefcase, MapPin, Calendar as CalendarIcon2, Clock, Doll
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { dummyWorkers } from "@/utils/dummyData";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Skill categories based on our dummyData
 const skillCategories = [
@@ -57,6 +59,7 @@ const locations = [
 
 const PostJob = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
@@ -68,6 +71,7 @@ const PostJob = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [matchedWorkers, setMatchedWorkers] = useState<typeof dummyWorkers>([]);
   const [jobCreated, setJobCreated] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setDescription(e.target.value);
@@ -155,7 +159,7 @@ const PostJob = () => {
     }, 1500);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form fields
@@ -164,26 +168,69 @@ const PostJob = () => {
       return;
     }
     
-    // In a real app, this would submit to the database
-    toast.success("Job posted successfully!");
-    setJobCreated(true);
+    setIsPosting(true);
     
-    // Clear the form
-    setTitle("");
-    setDescription("");
-    setCategory("");
-    setLocation("");
-    setDate(new Date());
-    setStartTime("");
-    setEndTime("");
-    setPayment("");
-    setMatchedWorkers([]);
+    try {
+      // Check if user is authenticated
+      if (!user) {
+        toast.error("Please log in to post a job");
+        navigate('/login', { state: { returnTo: '/post-job' } });
+        return;
+      }
+      
+      // Format date for database
+      const formattedDate = date ? format(date, 'yyyy-MM-dd') : '';
+      
+      // Add to Supabase
+      const { data, error } = await supabase
+        .from('jobs')
+        .insert({
+          title,
+          description,
+          location,
+          date: formattedDate,
+          start_time: startTime,
+          end_time: endTime,
+          payment: parseFloat(payment),
+          employer_id: user.id,
+          status: 'open',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select();
+        
+      if (error) {
+        console.error("Error posting job:", error);
+        toast.error("Failed to post job: " + error.message);
+        setIsPosting(false);
+        return;
+      }
+      
+      toast.success("Job posted successfully!");
+      setJobCreated(true);
+      
+      // Clear the form
+      setTitle("");
+      setDescription("");
+      setCategory("");
+      setLocation("");
+      setDate(new Date());
+      setStartTime("");
+      setEndTime("");
+      setPayment("");
+      setMatchedWorkers([]);
+    } catch (error) {
+      console.error("Error posting job:", error);
+      toast.error("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   const viewWorkerProfile = (workerId: string) => {
     // In a real app, this would navigate to the worker profile
     toast.info(`Viewing worker profile (ID: ${workerId})`);
-    // navigate(`/workers/${workerId}`);
+    navigate(`/worker-profile/${workerId}`);
   };
 
   const inviteWorker = (workerId: string) => {
@@ -194,7 +241,7 @@ const PostJob = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-grow py-16 px-4">
+      <main className="flex-grow py-16 px-4 mt-16">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold mb-2">Post a New Job</h1>
           <p className="text-lg text-gray-600 mb-8">
@@ -379,7 +426,13 @@ const PostJob = () => {
                       </div>
                     </CardContent>
                     <CardFooter>
-                      <Button type="submit" className="w-full">Post Job</Button>
+                      <Button 
+                        type="submit" 
+                        className="w-full"
+                        disabled={isPosting}
+                      >
+                        {isPosting ? "Posting..." : "Post Job"}
+                      </Button>
                     </CardFooter>
                   </form>
                 </Card>
