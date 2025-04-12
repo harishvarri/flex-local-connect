@@ -39,7 +39,7 @@ const categoryMappings: Record<string, string[]> = {
   'retail': ['Retail'],
   'warehouse': ['Warehouse'],
   'food-service': ['Food Service'],
-  'healthcare': ['Healthcare'],
+  // Fix: Removing the duplicate 'healthcare' property
   'education': ['Education'],
   'it-support': ['IT Support'],
   'marketing': ['Marketing'],
