@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import Navbar from "@/components/Navbar";
+import AuthenticatedNavbar from "@/components/AuthenticatedNavbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import { MapPin, Star, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Worker } from "@/types";
-import { dummyWorkers } from "@/utils/dummyData";
 
 // This function transforms kebab-case to Title Case
 const formatCategoryTitle = (category: string) => {
@@ -24,27 +23,13 @@ const formatCategoryTitle = (category: string) => {
 // Map URL parameters to database categories
 const categoryMappings: Record<string, string[]> = {
   'cleaning-maintenance': ['Cleaning', 'Maintenance'],
-  'handyman-repairs': ['Repairs', 'Handyman', 'Skilled Trade'],
+  'handyman-repairs': ['Repairs', 'Handyman'],
   'delivery-logistics': ['Delivery', 'Transportation'],
   'event-staff': ['Events', 'Food Service'],
-  'data-entry': ['Administrative', 'Administration', 'Data Entry'],
+  'data-entry': ['Administrative', 'Data Entry'],
   'construction': ['Construction', 'Labor'],
   'retail-sales': ['Retail', 'Sales'],
-  'healthcare': ['Healthcare', 'Support'],
-  'cleaning': ['Cleaning'],
-  'delivery': ['Delivery'],
-  'administration': ['Administration'],
-  'events': ['Events'],
-  'skilled-trade': ['Skilled Trade'],
-  'retail': ['Retail'],
-  'warehouse': ['Warehouse'],
-  'food-service': ['Food Service'],
-  // Fix: Removing the duplicate 'healthcare' property
-  'education': ['Education'],
-  'it-support': ['IT Support'],
-  'marketing': ['Marketing'],
-  'security': ['Security'],
-  'maintenance': ['Maintenance']
+  'healthcare': ['Healthcare', 'Support']
 };
 
 const CategoryPage = () => {
@@ -57,9 +42,7 @@ const CategoryPage = () => {
   const navigate = useNavigate();
   
   const categoryTitle = category ? formatCategoryTitle(category) : 'Category';
-  const dbCategories = category 
-    ? categoryMappings[category] || [categoryTitle] 
-    : [];
+  const dbCategories = category ? categoryMappings[category] || [categoryTitle] : [];
 
   useEffect(() => {
     const fetchWorkersByCategory = async () => {
@@ -68,87 +51,58 @@ const CategoryPage = () => {
       try {
         setIsLoading(true);
         
-        // Try to fetch workers from the database first
-        const { data: workerProfiles, error } = await supabase
+        const { data, error } = await supabase
           .from("worker_profiles")
           .select(`
             *, 
-            profiles:profiles!worker_profiles_id_fkey(id, name, email, avatar, phone, location, bio, role, created_at),
-            worker_skills:worker_skills!worker_skills_worker_id_fkey(
-              id,
+            profiles:id(id, name, email, avatar, phone, location, bio, role, created_at),
+            worker_skills(
               skill_id,
               level,
-              skills:skills!worker_skills_skill_id_fkey(id, name, category)
+              skills(id, name, category)
             )
           `);
 
-        if (error) {
-          console.error("Error fetching workers from database:", error);
-          throw error;
-        }
+        if (error) throw error;
 
-        if (workerProfiles && workerProfiles.length > 0) {
-          // Transform the data to match our Worker type
-          const formattedWorkers = workerProfiles.map(worker => ({
-            id: worker.profiles.id || worker.id,
-            name: worker.profiles.name || "Anonymous Worker",
-            email: worker.profiles.email || "",
-            role: "worker" as const,
-            avatar: worker.profiles.avatar || "",
-            phone: worker.profiles.phone || "",
-            location: worker.profiles.location || "Location not specified",
-            bio: worker.profiles.bio || "No bio available",
-            createdAt: worker.profiles.created_at,
-            skills: worker.worker_skills ? worker.worker_skills.map(skill => ({
-              id: skill.id,
-              name: skill.skills.name,
-              category: skill.skills.category,
-              level: skill.level
-            })) : [],
+        if (data) {
+          // Filter workers based on their skills matching the category
+          const filteredWorkers = data.filter((worker: any) => {
+            return worker.worker_skills.some((skill: any) => {
+              return dbCategories.some(cat => 
+                skill.skills.name.toLowerCase().includes(cat.toLowerCase()) || 
+                skill.skills.category.toLowerCase().includes(cat.toLowerCase())
+              );
+            });
+          });
+          
+          const formattedWorkers: Worker[] = filteredWorkers.map((w: any) => ({
+            id: w.profiles.id,
+            name: w.profiles.name,
+            email: w.profiles.email,
+            role: 'worker',
+            avatar: w.profiles.avatar,
+            phone: w.profiles.phone,
+            location: w.profiles.location,
+            bio: w.profiles.bio,
+            createdAt: w.profiles.created_at,
+            expectedWage: w.expected_wage,
+            skills: w.worker_skills.map((ws: any) => ({
+              id: ws.skills.id,
+              name: ws.skills.name,
+              category: ws.skills.category,
+              level: ws.level
+            })),
             availability: [],
-            expectedWage: worker.expected_wage,
             ratings: []
           }));
           
-          // Filter workers based on category
-          const filteredWorkers = formattedWorkers.filter(worker => {
-            return worker.skills.some(skill => 
-              dbCategories.some(cat => 
-                skill.name.toLowerCase().includes(cat.toLowerCase()) || 
-                skill.category.toLowerCase().includes(cat.toLowerCase())
-              )
-            );
-          });
-          
-          if (filteredWorkers.length > 0) {
-            setWorkers(filteredWorkers);
-            setIsLoading(false);
-            return;
-          }
+          setWorkers(formattedWorkers);
         }
-        
-        // If no database results or no matches, fall back to dummy workers
-        const filteredWorkers = dummyWorkers.filter(worker => {
-          return worker.skills.some(skill => 
-            dbCategories.some(cat => 
-              skill.name.toLowerCase().includes(cat.toLowerCase()) || 
-              skill.category.toLowerCase().includes(cat.toLowerCase())
-            )
-          );
-        });
-        
-        // If no workers match exactly, show some random ones to avoid empty state
-        const workersToShow = filteredWorkers.length > 0 
-          ? filteredWorkers 
-          : dummyWorkers.slice(0, 12);
-        
-        setWorkers(workersToShow);
-        setIsLoading(false);
       } catch (error) {
         console.error("Error fetching workers by category:", error);
-        // Use dummy data as fallback
-        const randomWorkers = dummyWorkers.slice(0, 12);
-        setWorkers(randomWorkers);
+        toast.error("Failed to load workers");
+      } finally {
         setIsLoading(false);
       }
     };
@@ -157,9 +111,7 @@ const CategoryPage = () => {
   }, [category, dbCategories]);
 
   const handleViewProfile = (workerId: string) => {
-    toast.info("Viewing worker profile: " + workerId);
-    // In a real app, we would navigate to the worker's profile
-    // navigate(`/worker-profile/${workerId}`);
+    navigate(`/worker-profile/${workerId}`);
   };
 
   // Get current page of workers
@@ -170,7 +122,7 @@ const CategoryPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      <AuthenticatedNavbar />
       <main className="flex-grow bg-gray-50">
         <div className="max-w-7xl mx-auto pt-24 pb-12 px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
@@ -259,7 +211,7 @@ const CategoryPage = () => {
                         <div className="flex flex-wrap gap-2">
                           {worker.skills
                             .filter(skill => 
-                              dbCategories.length === 0 || dbCategories.some(cat => 
+                              dbCategories.some(cat => 
                                 skill.name.toLowerCase().includes(cat.toLowerCase()) || 
                                 skill.category.toLowerCase().includes(cat.toLowerCase())
                               )

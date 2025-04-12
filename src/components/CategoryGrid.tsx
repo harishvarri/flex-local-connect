@@ -46,10 +46,7 @@ const CategoryGrid = () => {
   const navigate = useNavigate();
   
   const handleCategoryClick = (url: string) => {
-    // Ensure the URL pattern matches what's defined in App.tsx routes
-    // Map to the correct path format for CategoryPage
-    const categorySlug = url.split('/').pop();
-    navigate(`/jobs/${categorySlug}`);
+    navigate(url);
   };
   
   return (

@@ -36,6 +36,7 @@ const Profile = () => {
           return;
         }
         
+        // Populate form with user data if available
         if (appUser) {
           setFormData({
             fullName: appUser.name || "",
@@ -83,6 +84,7 @@ const Profile = () => {
         throw new Error("User not authenticated");
       }
       
+      // Update basic profile
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
@@ -95,7 +97,9 @@ const Profile = () => {
         
       if (profileError) throw profileError;
       
+      // Update role-specific information
       if (appUser?.role === 'worker') {
+        // Update worker profile
         const { error: workerError } = await supabase
           .from("worker_profiles")
           .update({
@@ -104,7 +108,11 @@ const Profile = () => {
           .eq("id", user.id);
           
         if (workerError) throw workerError;
+        
+        // Handle skills update in a real app
+        // This would require more complex logic to add/remove skills
       } else if (appUser?.role === 'employer') {
+        // Update employer profile
         const { error: employerError } = await supabase
           .from("employer_profiles")
           .update({
@@ -116,6 +124,7 @@ const Profile = () => {
         if (employerError) throw employerError;
       }
       
+      // Refresh user data
       await refreshUser();
       
       toast.success("Profile updated successfully!");

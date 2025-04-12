@@ -22,11 +22,11 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, user, isLoading } = useAuth();
+  const { signIn, user } = useAuth();
   
   // Get return URL from location state or default to dashboard
   const returnTo = location.state?.returnTo || "/dashboard";
@@ -46,26 +46,24 @@ const Login = () => {
       return;
     }
     
-    setIsSubmitting(true);
+    setIsLoading(true);
     
     try {
       const { error } = await signIn(email, password);
       
       if (error) {
-        toast.error(error.message || "Login failed. Please check your credentials.");
+        toast.error(error.message);
       } else {
         toast.success("Login successful!");
         navigate(returnTo);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Login error:", error);
-      toast.error(error?.message || "An unexpected error occurred");
+      toast.error("An unexpected error occurred");
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
-
-  const isButtonDisabled = isSubmitting || isLoading;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -101,16 +99,15 @@ const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    disabled={isButtonDisabled}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Password</Label>
-                    <span className="text-sm font-medium text-smartflex-blue">
+                    <Link to="/forgot-password" className="text-sm font-medium text-smartflex-blue hover:underline">
                       Forgot password?
-                    </span>
+                    </Link>
                   </div>
                   <Input 
                     id="password" 
@@ -119,7 +116,6 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    disabled={isButtonDisabled}
                   />
                 </div>
 
@@ -132,7 +128,6 @@ const Login = () => {
                         setRememberMe(checked);
                       }
                     }}
-                    disabled={isButtonDisabled}
                   />
                   <Label htmlFor="remember" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     Remember me
@@ -141,12 +136,8 @@ const Login = () => {
               </CardContent>
 
               <CardFooter className="flex flex-col space-y-4">
-                <Button 
-                  className="w-full" 
-                  type="submit" 
-                  disabled={isButtonDisabled}
-                >
-                  {isSubmitting ? "Signing in..." : "Sign In"}
+                <Button className="w-full" type="submit" disabled={isLoading}>
+                  {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
               </CardFooter>
             </form>
